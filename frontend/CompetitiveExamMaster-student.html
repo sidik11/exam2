@@ -375,7 +375,7 @@ footer{padding:32px 16px;color:var(--muted)}
 </div>
 <nav class="nav">
   <button onclick="showSection('home')">Home</button>
-  <button onclick="showTests(null)">Test Series</button>
+  <button id="testsNav" onclick="showTests(null)">Test Series</button>
   <button id="premiumNav" class="hidden" onclick="showSection('premium')">⭐ Premium</button>
   <button id="authNav" onclick="showSection('auth')">Login / Register</button>
   <button id="accountNav" class="hidden" onclick="showSection('account')">My Account</button>
@@ -393,7 +393,7 @@ footer{padding:32px 16px;color:var(--muted)}
     <h1 id="heroTitle">Turn your preparation into progress.</h1>
     <p>Build confidence with focused practice, timed mock exams, and clear results that help you decide what to work on next.</p>
     <div class="hero-actions">
-      <button class="hero-primary" onclick="showTests(null)">Explore test series <span aria-hidden="true">→</span></button>
+      <button id="testsHeroBtn" class="hero-primary" onclick="showTests(null)">Explore test series <span aria-hidden="true">→</span></button>
       <button id="createAccountHeroBtn" class="hero-secondary" onclick="showSection('auth');showAuthTab('register')">Create a free account</button>
     </div>
   </div>
@@ -734,6 +734,10 @@ function showSection(id){
   if(id==='account') loadAccount();
 }
 function showTests(category){
+  if(currentUser?.role==='teacher'){
+    showSection('teacher');
+    return;
+  }
   if(!currentUser){
     showSection('auth');
     msg('loginMsg', 'Please log in or register first to view Test Series.', false);
@@ -941,13 +945,19 @@ async function loadNotices(target){
 
 function updateUI(){
   ['adminNav','teacherNav','logoutNav','accountNav','premiumNav'].forEach(id=>document.getElementById(id)?.classList.add('hidden'));
+  document.getElementById('testsNav')?.classList.remove('hidden');
+  document.getElementById('testsHeroBtn')?.classList.remove('hidden');
   document.getElementById('authNav')?.classList.remove('hidden');
   if(currentUser){
     document.getElementById('logoutNav')?.classList.remove('hidden');
     document.getElementById('accountNav')?.classList.remove('hidden');
     document.getElementById('authNav')?.classList.add('hidden');
     if(currentUser.role==='admin') document.getElementById('adminNav')?.classList.remove('hidden');
-    if(currentUser.role==='teacher') document.getElementById('teacherNav')?.classList.remove('hidden');
+    if(currentUser.role==='teacher'){
+      document.getElementById('teacherNav')?.classList.remove('hidden');
+      document.getElementById('testsNav')?.classList.add('hidden');
+      document.getElementById('testsHeroBtn')?.classList.add('hidden');
+    }
     if(currentUser.role==='student') document.getElementById('premiumNav')?.classList.remove('hidden');
     document.getElementById('createAccountHeroBtn')?.classList.toggle('hidden', !!currentUser);
     const w=document.getElementById('teacherWelcome');
@@ -1165,8 +1175,9 @@ async function refreshModuleViews(){
 function renderHomeModules(){
   const grid = document.getElementById('examGrid');
   if(!grid) return;
+  const teacherViewing = currentUser?.role==='teacher';
   grid.innerHTML = MODULES.map(m => `
-    <div class="card searchable"><div>${esc(m.icon||'📘')}</div><h3>${esc(m.name)}</h3><p class="muted">${esc(m.description||'')}</p><button data-name="${esc(m.name)}" onclick="showTests(this.dataset.name)">View Test Series</button></div>
+    <div class="card searchable"><div>${esc(m.icon||'📘')}</div><h3>${esc(m.name)}</h3><p class="muted">${esc(m.description||'')}</p>${teacherViewing ? '' : '<button data-name="'+esc(m.name)+'" onclick="showTests(this.dataset.name)">View Test Series</button>'}</div>
   `).join('') || '<p class="muted">No exam modules yet.</p>';
 }
 function renderCategoryOptions(){
