@@ -375,7 +375,7 @@ footer{padding:32px 16px;color:var(--muted)}
 </div>
 <nav class="nav">
   <button onclick="showSection('home')">Home</button>
-  <button onclick="showTests(null)">Test Series</button>
+  <button id="testsNav" onclick="showTests(null)">Test Series</button>
   <button id="premiumNav" class="hidden" onclick="showSection('premium')">⭐ Premium</button>
   <button id="authNav" onclick="showSection('auth')">Login / Register</button>
   <button id="accountNav" class="hidden" onclick="showSection('account')">My Account</button>
@@ -941,8 +941,10 @@ async function loadNotices(target){
 
 function updateUI(){
   ['adminNav','teacherNav','logoutNav','accountNav','premiumNav'].forEach(id=>document.getElementById(id)?.classList.add('hidden'));
+  document.getElementById('testsNav')?.classList.remove('hidden');
   document.getElementById('authNav')?.classList.remove('hidden');
   if(currentUser){
+    document.getElementById('testsNav')?.classList.toggle('hidden', currentUser.role==='teacher');
     document.getElementById('logoutNav')?.classList.remove('hidden');
     document.getElementById('accountNav')?.classList.remove('hidden');
     document.getElementById('authNav')?.classList.add('hidden');
@@ -1296,6 +1298,10 @@ function trackTimeSpent(){
 }
 
 async function loadTests(){
+  if(currentUser?.role==='teacher'){
+    showSection('teacher');
+    return;
+  }
   const grid = document.getElementById('testsGrid');
   document.getElementById('testsTitle').textContent = activeCategory ? 'Test Series — ' + activeCategory : 'Test Series — All Modules';
   try{
