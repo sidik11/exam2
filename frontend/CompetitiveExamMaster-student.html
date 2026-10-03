@@ -393,7 +393,7 @@ footer{padding:32px 16px;color:var(--muted)}
     <h1 id="heroTitle">Turn your preparation into progress.</h1>
     <p>Build confidence with focused practice, timed mock exams, and clear results that help you decide what to work on next.</p>
     <div class="hero-actions">
-      <button class="hero-primary" onclick="showTests(null)">Explore test series <span aria-hidden="true">→</span></button>
+      <button id="testsHeroBtn" class="hero-primary" onclick="showTests(null)">Explore test series <span aria-hidden="true">→</span></button>
       <button id="createAccountHeroBtn" class="hero-secondary" onclick="showSection('auth');showAuthTab('register')">Create a free account</button>
     </div>
   </div>
@@ -942,9 +942,11 @@ async function loadNotices(target){
 function updateUI(){
   ['adminNav','teacherNav','logoutNav','accountNav','premiumNav'].forEach(id=>document.getElementById(id)?.classList.add('hidden'));
   document.getElementById('testsNav')?.classList.remove('hidden');
+  document.getElementById('testsHeroBtn')?.classList.remove('hidden');
   document.getElementById('authNav')?.classList.remove('hidden');
   if(currentUser){
     document.getElementById('testsNav')?.classList.toggle('hidden', currentUser.role==='teacher');
+    document.getElementById('testsHeroBtn')?.classList.toggle('hidden', currentUser.role==='teacher');
     document.getElementById('logoutNav')?.classList.remove('hidden');
     document.getElementById('accountNav')?.classList.remove('hidden');
     document.getElementById('authNav')?.classList.add('hidden');
