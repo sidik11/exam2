@@ -556,7 +556,7 @@ async function route(req, res) {
     const b=await body(req), email=cleanEmail(b.email); rateLimit(req,'admin-otp',5,900000,email);
     if(email!==CFG.admin.email) throw Object.assign(new Error('This email is not authorized for Admin access.'),{status:403});
     if(Date.now()-adminOtpState.sentAt < 60*1000) throw Object.assign(new Error('Please wait 60 seconds before requesting another OTP.'),{status:429});
-    const otp=String(crypto.randomInt(100000,1000000));
+    let otp=String(crypto.randomInt(100000,1000000));
     adminOtpState.hash=hashAdminOtp(otp);
     adminOtpState.expiresAt=Date.now()+ADMIN_OTP_TTL_MS;
     adminOtpState.attempts=0;
