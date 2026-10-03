@@ -36,9 +36,8 @@ const CFG = {
     sender: process.env.GMAIL_SENDER_EMAIL || ''
   },
   admin: {
-    email: process.env.ADMIN_EMAIL || 'mjdeveloperodisha@gmail.com',
-    name: process.env.ADMIN_NAME || 'Administrator',
-    devOtp: process.env.ADMIN_DEV_OTP || ''
+    email: 'mjdeveloperodisha@gmail.com',
+    name: process.env.ADMIN_NAME || 'Administrator'
   },
   payment: {
     keyId: process.env.RAZORPAY_KEY_ID || '',
@@ -556,32 +555,24 @@ async function route(req, res) {
     const b=await body(req), email=cleanEmail(b.email); rateLimit(req,'admin-otp',5,900000,email);
     if(email!==CFG.admin.email) throw Object.assign(new Error('This email is not authorized for Admin access.'),{status:403});
     if(Date.now()-adminOtpState.sentAt < 60*1000) throw Object.assign(new Error('Please wait 60 seconds before requesting another OTP.'),{status:429});
-    let otp=String(crypto.randomInt(100000,1000000));
+    const otp=String(crypto.randomInt(100000,1000000));
     adminOtpState.hash=hashAdminOtp(otp);
     adminOtpState.expiresAt=Date.now()+ADMIN_OTP_TTL_MS;
     adminOtpState.attempts=0;
     adminOtpState.sentAt=Date.now();
-    let sent=await sendEmail(
+    const sent=await sendEmail(
       CFG.admin.email,
       'Competitive Exam Master Admin OTP',
       emailShell('Admin login verification','<p>Your one-time Admin login OTP is:</p><div style="font-size:32px;font-weight:800;letter-spacing:8px;padding:14px 0">'+otp+'</div><p>This OTP expires in 10 minutes. If you did not request this, ignore this email.</p>')
     );
-    const devOtpEnabled = process.env.NODE_ENV !== 'production' && /^\\d{6}$/.test(CFG.admin.devOtp);
-    if(!sent && devOtpEnabled){
-      otp=CFG.admin.devOtp;
-      adminOtpState.hash=hashAdminOtp(otp);
-      adminOtpState.expiresAt=Date.now()+ADMIN_OTP_TTL_MS;
-      adminOtpState.attempts=0;
-      sent=true;
-    }
     if (!sent) {
       adminOtpState.hash='';
       adminOtpState.expiresAt=0;
       adminOtpState.attempts=0;
       adminOtpState.sentAt=0;
-      throw Object.assign(new Error('Admin OTP delivery is unavailable. Configure GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN and GMAIL_SENDER_EMAIL. For local-only development, set ADMIN_DEV_OTP to a 6-digit code.'),{status:503});
+      throw Object.assign(new Error('Admin email delivery is unavailable. Configure Gmail API credentials before requesting an OTP.'),{status:503});
     }
-    return send(res,200,{message:devOtpEnabled?'Admin OTP development mode is active. Enter the configured ADMIN_DEV_OTP.':'OTP sent to the authorized Admin Gmail address.',devMode:devOtpEnabled});
+    return send(res,200,{message:'OTP sent to the authorized Admin Gmail address.'});
   }
 
   if (url.pathname==='/api/admin/verify-otp' && method==='POST') {
