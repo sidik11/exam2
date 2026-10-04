@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Competitive Exam Master – Teacher & Student</title>
+<title>Exam Master – Teacher & Student</title>
 <meta name="description" content="Comprehensive online test and competitive examination platform featuring mock tests, timed exams, automated ranking, student performance analytics, and administrative management.">
-<meta property="og:title" content="Competitive Exam Master – Teacher & Student">
+<meta property="og:title" content="Exam Master – Teacher & Student">
 <meta property="og:description" content="Comprehensive online test and competitive examination platform featuring mock tests, timed exams, automated ranking, student performance analytics, and administrative management.">
 <style>
 :root{--bg:#f3f5f9;--fg:#172033;--primary:#2563eb;--card:#ffffff;--border:#e5e7eb}
@@ -369,7 +369,7 @@ footer{padding:32px 16px;color:var(--muted)}
 <div class="brand-row">
   <img id="brandLogo" class="hidden" alt="logo">
   <div>
-    <div class="brand" id="brandName">📚 Competitive Exam Master</div>
+    <div class="brand" id="brandName">📚 Exam Master</div>
     <div class="sub">Test Series</div>
   </div>
 </div>
@@ -697,7 +697,7 @@ footer{padding:32px 16px;color:var(--muted)}
 </section>
 
 </main>
-<footer id="siteFooter">Competitive Exam Master</footer>
+<footer id="siteFooter">Exam Master</footer>
 
 <script>
 
@@ -813,7 +813,7 @@ async function loadBranding(){
       document.getElementById('brandName').textContent = '📚 ' + settings.institutionName;
       document.title = settings.institutionName;
       document.getElementById('heroTitle').textContent = settings.institutionName + ' — Prepare Smarter.';
-      document.getElementById('siteFooter').textContent = settings.institutionName + ' • Competitive Exam Master';
+      document.getElementById('siteFooter').textContent = settings.institutionName + ' • Exam Master';
     }
     const logo = document.getElementById('brandLogo');
     if(settings.logoDataUrl){ logo.src = settings.logoDataUrl; logo.classList.remove('hidden'); }
@@ -1461,7 +1461,7 @@ window.payWithGateway = async function(planId){
     await loadRazorpay();
     const rzp = new Razorpay({
       key: order.keyId, amount: order.amount, currency: order.currency, order_id: order.orderId,
-      name: (document.getElementById('brandName')||{}).textContent || 'Competitive Exam Master',
+      name: (document.getElementById('brandName')||{}).textContent || 'Exam Master',
       description: order.planName + ' Premium', prefill:{ name:currentUser.name, email:currentUser.email },
       theme:{ color:'#2563eb' },
       handler: async resp => {
