@@ -7,6 +7,14 @@
     {
       "source": "/exam-api/:path*",
       "destination": "https://server1-osj0.onrender.com/exam-api/:path*"
+    },
+    {
+      "source": "/student",
+      "destination": "/frontend/CompetitiveExamMaster-student.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/frontend/CompetitiveExamMaster-admin.html"
     }
   ]
 }
