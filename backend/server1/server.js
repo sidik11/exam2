@@ -527,7 +527,7 @@ async function route(req, res) {
   if (process.env.SERVER_ROLE === 'core' && (url.pathname==='/api/tests' || url.pathname.startsWith('/api/tests/') || url.pathname==='/api/admin/ratings')) return send(res,404,{error:'Exam API is served by Server 2.'});
   if (method==='OPTIONS') return send(res,204,{});
   if (url.pathname==='/api/auth/csrf' && method==='GET') { const token=createCsrfToken(); setCsrfCookie(res,token); return send(res,200,{csrfToken:token}); }
-  if (url.pathname.startsWith('/api/') && method!=='GET' && url.pathname!=='/api/webhook') { rateLimit(req,'api-global',180,60000); validateCsrf(req); }
+  if (url.pathname.startsWith('/api/') && method!=='GET' && url.pathname!=='/api/webhook' && url.pathname!=='/api/internal/auth/verify') { rateLimit(req,'api-global',180,60000); validateCsrf(req); }
 
   if (url.pathname==='/api/internal/auth/verify' && method==='POST') {
     if(String(req.headers['x-internal-auth']||'')!==String(process.env.INTERNAL_AUTH_SECRET||'')) return send(res,403,{error:'Forbidden.'});
