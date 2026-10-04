@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://server1-osj0.onrender.com/api/:path*"
+    },
+    {
+      "source": "/exam-api/:path*",
+      "destination": "https://server1-osj0.onrender.com/exam-api/:path*"
+    }
+  ]
+}
