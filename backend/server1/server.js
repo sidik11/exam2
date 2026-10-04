@@ -1229,7 +1229,7 @@ function proxyExamRequest(req,res){
   const target=new URL(process.env.SERVER2_URL||'http://127.0.0.1:3001');
   const upstreamPath=req.url.replace(/^\/exam-api/,'')||'/';
   const transport=target.protocol==='https:'?https:http;
-  const client=transport.request({hostname:target.hostname,port:target.port||(target.protocol==='https:'?443:80),path:upstreamPath,method:req.method,headers:{...req.headers,host:target.host,'x-internal-proxy':'1'}},up=>{
+  const client=transport.request({hostname:target.hostname,port:target.port||(target.protocol==='https:'?443:80),path:upstreamPath,method:req.method,headers:{...req.headers,host:target.host,origin:'',referer:'','x-internal-proxy':'1'}},up=>{
     const headers={...up.headers}; delete headers['content-length']; res.writeHead(up.statusCode||502,headers); up.pipe(res);
   });
   client.on('error',e=>send(res,502,{error:'Exam server unavailable.',detail:e.message}));
