@@ -365,12 +365,14 @@ function publicUser(u) {
 function parseCookies(req){const out={};for(const part of String(req.headers.cookie||'').split(';')){const i=part.indexOf('=');if(i>0)out[part.slice(0,i).trim()]=decodeURIComponent(part.slice(i+1).trim());}return out;}
 function getSessionToken(req,portal){const c=parseCookies(req),h=req.headers.authorization||'',p=String(portal||req.headers['x-cem-portal']||'').toLowerCase();if(p==='admin')return c.cem_admin_session||(h.startsWith('Bearer ')?h.slice(7):'');if(p==='student')return c.cem_user_session||(h.startsWith('Bearer ')?h.slice(7):'');return c.cem_user_session||c.cem_admin_session||(h.startsWith('Bearer ')?h.slice(7):'');}
 async function currentUser(req,roles){
-  const token=getSessionToken(req,'student');
+  const portal=String(req.headers['x-cem-portal']||'student').toLowerCase();
+  const token=getSessionToken(req,portal);
   if(!token)throw Object.assign(new Error('Please log in.'),{status:401});
   const target=new URL(process.env.SERVER1_URL||'http://127.0.0.1:3000');
   const payload=JSON.stringify({});
   const user=await new Promise((resolve,reject)=>{
-    const q=http.request({hostname:target.hostname,port:target.port||80,path:'/api/internal/auth/verify',method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload),'Cookie':'cem_user_session='+encodeURIComponent(token),'X-Internal-Auth':process.env.INTERNAL_AUTH_SECRET||''}},r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{try{const j=JSON.parse(d||'{}');if(r.statusCode>=200&&r.statusCode<300)resolve(j.user);else reject(Object.assign(new Error(j.error||'Authentication failed.'),{status:r.statusCode||401}));}catch(e){reject(e);}})});q.on('error',reject);q.write(payload);q.end();
+    const q=http.request({hostname:target.hostname,port:target.port||80,path:'/api/internal/auth/verify',method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(payload),'Cookie':(portal==='admin'?'cem_admin_session=':'cem_user_session=')+encodeURIComponent(token),
+        'X-CEM-Portal':portal,'X-Internal-Auth':process.env.INTERNAL_AUTH_SECRET||''}},r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{try{const j=JSON.parse(d||'{}');if(r.statusCode>=200&&r.statusCode<300)resolve(j.user);else reject(Object.assign(new Error(j.error||'Authentication failed.'),{status:r.statusCode||401}));}catch(e){reject(e);}})});q.on('error',reject);q.write(payload);q.end();
   });
   if(!user)throw Object.assign(new Error('Please log in.'),{status:401});
   if(roles&&!roles.includes(user.role))throw Object.assign(new Error('Not authorized.'),{status:403});
