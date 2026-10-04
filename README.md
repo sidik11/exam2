@@ -76,3 +76,55 @@ Security
 Important production note
 No web application can honestly be called unhackable. Production deployment still requires HTTPS, a strong unique AUTH_SESSION_SECRET, protection of Firebase/Gmail/Razorpay credentials, a reverse proxy/WAF such as Cloudflare, dependency updates, monitoring and backups.
 Never commit .env, service-account JSON, OAuth refresh tokens, or payment secrets.
+## Backend Architecture
+
+The backend is split into two independent services with separate Firebase Realtime Databases.
+
+backend/
+├── server1/   # Core/Admin API + identity
+│   ├── server.js
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── .env.example
+│   └── database.rules.json
+│
+└── server2/   # Exam API + exam state/results
+    ├── server.js
+    ├── package.json
+    ├── package-lock.json
+    ├── .env.example
+    └── database.rules.json
+
+### Server 1 — Core/Admin API
+- Student registration/login
+- Teacher registration/login
+- Institute/admin/user management
+- Blocking and approval
+- Teacher management
+- Reports and notifications/OTP
+- Own Firebase RTDB
+
+### Server 2 — Exam API
+- Exam listing and management
+- Question delivery
+- Exam sessions
+- Answer saving
+- Submission and result calculation
+- Timing/integrity checks
+- Own Firebase RTDB
+
+Server 2 does not store the user database. It verifies the signed user/admin session through a protected Server 1 internal endpoint. Browser exam requests are routed through Server 1's /exam-api gateway to Server 2, so the frontend remains same-origin.
+
+### Local startup
+
+Terminal 1:
+cd backend/server1
+npm install
+npm start
+
+Terminal 2:
+cd backend/server2
+npm install
+npm start
+
+Server 1 defaults to http://localhost:3000 and Server 2 to http://localhost:3001.
