@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "googleapis": "^182.0.0",
+    "firebase-admin": "^13.5.0"
+  },
+  "scripts": {
+    "build": "node -c server.js",
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
