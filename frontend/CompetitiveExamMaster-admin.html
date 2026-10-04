@@ -272,35 +272,16 @@ function msg(id,text,ok=false){
   }
 }
 
-async function getCsrfToken(force=false,exam=false){
-  const key=exam?'__examCsrfToken':'__cemCsrfToken';
-  if(!force && window[key]) return window[key];
-  const r=await fetch(exam?'/exam-api/api/auth/csrf':'/api/auth/csrf',{method:'GET',credentials:'same-origin',cache:'no-store'});
-  const data=await r.json().catch(()=>({}));
-  if(!r.ok||!data.csrfToken) throw new Error('Security token initialization failed. Please reload the page.');
-  window[key]=data.csrfToken;
-  return data.csrfToken;
-}
 async function api(method,url,body){
   const isExam=url.startsWith('/api/tests')||url==='/api/admin/ratings';
   const requestUrl=isExam?'/exam-api'+url:url;
-  const isWrite=!['GET','HEAD','OPTIONS'].includes(method);
-  let csrf=isWrite?await getCsrfToken(false,isExam):null;
-  for(let attempt=0;attempt<2;attempt++){
-    const headers={'Content-Type':'application/json','X-CEM-Portal':'admin'};
-    if(isWrite) headers['X-CSRF-Token']=csrf;
-    const r=await fetch(requestUrl,{method,headers,credentials:'same-origin',body:body===undefined?undefined:JSON.stringify(body)});
-    const data=await r.json().catch(()=>({}));
-    if(r.status===403 && isWrite && /CSRF validation failed/i.test(String(data.error||'')) && attempt===0){
-      window.__cemCsrfToken=null;
-      csrf=await getCsrfToken(true);
-      continue;
-    }
-    if(!r.ok) throw new Error(cleanErrorMessage(data.error||data.message||'Request failed.'));
-    return data;
-  }
-  throw new Error('Request failed.');
+  const headers={'Content-Type':'application/json','X-CEM-Portal':'admin'};
+  const r=await fetch(requestUrl,{method,headers,credentials:'same-origin',body:body===undefined?undefined:JSON.stringify(body)});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(cleanErrorMessage(data.error||data.message||'Request failed.'));
+  return data;
 }
+console.log('Exam Master frontend build: frontend-no-csrf-2026-10-04');
 
 let currentUser = null;
 
