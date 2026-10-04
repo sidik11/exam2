@@ -701,17 +701,20 @@ footer{padding:32px 16px;color:var(--muted)}
 
 <script>
 
-async function getCsrfToken(){
-  if(window.__cemCsrfToken) return window.__cemCsrfToken;
-  const r=await fetch('/api/auth/csrf',{method:'GET',credentials:'same-origin',cache:'no-store'});
+async function getCsrfToken(exam=false){
+  const key=exam?'__examCsrfToken':'__cemCsrfToken';
+  if(window[key]) return window[key];
+  const r=await fetch(exam?'/exam-api/api/auth/csrf':'/api/auth/csrf',{method:'GET',credentials:'same-origin',cache:'no-store'});
   const data=await r.json().catch(()=>({}));
   if(!r.ok||!data.csrfToken) throw new Error('Security token initialization failed. Refresh the page.');
-  window.__cemCsrfToken=data.csrfToken; return data.csrfToken;
+  window[key]=data.csrfToken; return data.csrfToken;
 }
 async function api(method,url,body){
+  const isExam=url.startsWith('/api/tests')||url==='/api/admin/ratings';
+  const requestUrl=isExam?'/exam-api'+url:url;
   const headers={'Content-Type':'application/json','X-CEM-Portal':'student'};
-  if(method!=='GET'&&method!=='HEAD'&&method!=='OPTIONS') headers['X-CSRF-Token']=await getCsrfToken();
-  const r=await fetch(url,{method,headers,credentials:'same-origin',body:body===undefined?undefined:JSON.stringify(body)});
+  if(method!=='GET'&&method!=='HEAD'&&method!=='OPTIONS') headers['X-CSRF-Token']=await getCsrfToken(isExam);
+  const r=await fetch(requestUrl,{method,headers,credentials:'same-origin',body:body===undefined?undefined:JSON.stringify(body)});
   const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||data.message||'Request failed.');return data;
 }
 function esc(value){const s=String(value??'');return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
