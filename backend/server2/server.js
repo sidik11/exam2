@@ -521,7 +521,7 @@ async function route(req, res) {
   if (process.env.SERVER_ROLE === 'exam' && !(url.pathname==='/api/health' || url.pathname==='/api/auth/csrf' || url.pathname==='/api/internal/auth/verify' || url.pathname==='/api/tests' || url.pathname.startsWith('/api/tests/') || url.pathname==='/api/admin/ratings')) return send(res,404,{error:'This endpoint belongs to Server 1.'});
   if (method==='OPTIONS') return send(res,204,{});
   if (url.pathname==='/api/auth/csrf' && method==='GET') { const token=createCsrfToken(); setCsrfCookie(res,token); return send(res,200,{csrfToken:token}); }
-  if (url.pathname.startsWith('/api/') && method!=='GET' && url.pathname!=='/api/webhook') { rateLimit(req,'api-global',180,60000); validateCsrf(req); }
+  if (url.pathname.startsWith('/api/') && method!=='GET' && url.pathname!=='/api/webhook' && url.pathname!=='/api/internal/auth/verify') { rateLimit(req,'api-global',180,60000); validateCsrf(req); }
 
   if (url.pathname==='/api/config' && method==='GET') {
     return send(res,200,{paymentEnabled:CFG.payment.enabled,paymentMode:CFG.payment.enabled?'test':null,authMode:'manual'});
