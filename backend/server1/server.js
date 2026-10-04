@@ -1210,15 +1210,15 @@ function mimeFile(filePath) {
 
 function serveStatic(req,res) {
   const url=new URL(req.url,'http://localhost');
+  const frontendRoot=path.resolve(__dirname,'..','..','frontend');
   let p;
-  if(url.pathname==='/' || url.pathname==='/student') p=path.join(__dirname,'..','frontend','CompetitiveExamMaster-student.html');
-  else if(url.pathname==='/admin') p=path.join(__dirname,'..','frontend','CompetitiveExamMaster-admin.html');
-  else if(url.pathname.startsWith('/frontend/')) p=path.join(__dirname,'..',url.pathname);
+  if(url.pathname==='/' || url.pathname==='/student') p=path.join(frontendRoot,'CompetitiveExamMaster-student.html');
+  else if(url.pathname==='/admin') p=path.join(frontendRoot,'CompetitiveExamMaster-admin.html');
+  else if(url.pathname.startsWith('/frontend/')) p=path.join(frontendRoot,url.pathname.slice('/frontend/'.length));
   else return false;
   if(!fs.existsSync(p)) return false;
-  const realRoot=path.join(__dirname,'..','frontend');
   const real=path.resolve(p);
-  if(real!==path.resolve(realRoot, path.basename(real)) && !real.startsWith(realRoot+path.sep)) return false;
+  if(real!==frontendRoot && !real.startsWith(frontendRoot+path.sep)) return false;
   res.writeHead(200,{...securityHeaders(req),'Content-Type':mimeFile(p),'Cache-Control':'no-store'});
   fs.createReadStream(p).pipe(res);
   return true;
