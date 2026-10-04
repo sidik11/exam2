@@ -549,10 +549,12 @@ async function route(req, res) {
 
   if (url.pathname==='/api/internal/auth/verify' && method==='POST') {
     if(String(req.headers['x-internal-auth']||'')!==String(process.env.INTERNAL_AUTH_SECRET||'')) return send(res,403,{error:'Forbidden.'});
-    const token=getSessionToken(req,'student'); const session=verifyUserSession(token);
-    if(!session) return send(res,401,{error:'Invalid session.'});
-    const user=await get('users/'+session.uid);
-    if(!user||user.blocked||!['student','teacher'].includes(user.role)|| (user.role==='teacher'&&user.status!=='approved')) return send(res,403,{error:'Account not authorized.'});
+    const portal=String(req.headers['x-cem-portal']||'student').toLowerCase();
+    const token=getSessionToken(req,portal); const adminSession=verifyAdminSession(token); const userSession=verifyUserSession(token);
+    if(!adminSession&&!userSession) return send(res,401,{error:'Invalid session.'});
+    const uidValue=adminSession?adminSession.uid:userSession.uid;
+    const user=await get('users/'+uidValue);
+    if(!user||user.blocked||!['admin','student','teacher'].includes(user.role)|| (user.role==='teacher'&&user.status!=='approved')) return send(res,403,{error:'Account not authorized.'});
     return send(res,200,{user:publicUser(user)});
   }
   if (url.pathname==='/api/config' && method==='GET') {
@@ -1244,7 +1246,8 @@ function serveStatic(req,res) {
 function proxyExamRequest(req,res){
   const target=new URL(process.env.SERVER2_URL||'http://127.0.0.1:3001');
   const upstreamPath=req.url.replace(/^\/exam-api/,'')||'/';
-  const client=https.request({hostname:target.hostname,port:target.port||443,path:upstreamPath,method:req.method,headers:{...req.headers,host:target.host,'x-internal-proxy':'1'}},up=>{
+  const transport=target.protocol==='https:'?https:http;
+  const client=transport.request({hostname:target.hostname,port:target.port||(target.protocol==='https:'?443:80),path:upstreamPath,method:req.method,headers:{...req.headers,host:target.host,'x-internal-proxy':'1'}},up=>{
     const headers={...up.headers}; delete headers['content-length']; res.writeHead(up.statusCode||502,headers); up.pipe(res);
   });
   client.on('error',e=>send(res,502,{error:'Exam server unavailable.',detail:e.message}));
