@@ -104,18 +104,17 @@ main{max-width:1240px;margin:auto;padding:30px 28px 44px}.section>h2{font-size:3
     <div class="admin-email-lock">
       <span>🔐</span>
       <div>
-        <small>Authorized Administrator Email</small>
-        <strong>mjdeveloperodisha@gmail.com</strong>
+        <small>Administrator access</small>
+        <strong>Verification email is configured securely.</strong>
       </div>
     </div>
     <div id="adminOtpEmailPane">
-      <div class="form-row"><label style="text-align:left">Administrator Email</label><input id="loginEmail" type="email" value="mjdeveloperodisha@gmail.com" autocomplete="email" readonly></div>
       <button id="sendOtpBtn" class="admin-login-btn" type="button" style="width:100%" onclick="requestAdminOtp()">Send OTP</button>
-      <p class="admin-login-hint">A 6-digit one-time verification code will be sent to the authorized email address.</p>
+      <p class="admin-login-hint">A 6-digit one-time verification code will be sent to the configured administrator email address.</p>
       <p id="loginMsg"></p>
     </div>
     <div id="adminOtpPane" class="hidden">
-      <div class="otp-sent">✉️ OTP sent to <b>mjdeveloperodisha@gmail.com</b></div>
+      <div class="otp-sent">✉️ OTP sent to the configured administrator email.</div>
       <div class="form-row"><label style="text-align:left">Enter 6-digit OTP</label><input id="adminOtp" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" autocomplete="one-time-code"></div>
       <button id="verifyOtpBtn" class="admin-login-btn" type="button" style="width:100%" onclick="verifyAdminOtp()">Verify OTP &amp; Login</button>
       <button class="admin-back-btn" style="width:100%;margin-top:8px" onclick="resetAdminOtp()">← Send a new OTP</button>
@@ -336,12 +335,7 @@ window.requestAdminOtp = async function(){
   const btn=document.getElementById('sendOtpBtn');
   if(btn){btn.classList.add('loading');btn.disabled=true;btn.textContent='Sending…';}
   try {
-    const email = document.getElementById('loginEmail').value.trim();
-    if(email !== 'mjdeveloperodisha@gmail.com') {
-      msg('loginMsg', 'Enter the authorized Administrator Email.');
-      return;
-    }
-    const r = await api('POST', '/api/admin/request-otp', { email });
+    const r = await api('POST', '/api/admin/request-otp', {});
     msg('loginMsg', r.message, true);
     document.getElementById('adminOtpEmailPane').classList.add('hidden');
     document.getElementById('adminOtpPane').classList.remove('hidden');
@@ -363,8 +357,7 @@ window.verifyAdminOtp = async function(){
       msg('otpMsg', 'Enter the 6-digit OTP code.');
       return;
     }
-    const email = document.getElementById('loginEmail').value.trim();
-    const r = await api('POST', '/api/admin/verify-otp', { email, otp });
+    const r = await api('POST', '/api/admin/verify-otp', { otp });
     currentUser = r.user;
     msg('otpMsg', 'Admin login successful.', true);
     updateUI();
