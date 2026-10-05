@@ -495,10 +495,17 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString(undefined,{day:'numeric'
 
 async function loadSubscriptionAdmin(){
   try{
-    const { plans, payment } = await api('GET','/api/plans');
+    const [{ plans, payment }, razorpayStatus] = await Promise.all([
+      api('GET','/api/plans'),
+      api('GET','/api/admin/razorpay')
+    ]);
     document.getElementById('admUpi').value = (payment && payment.upiId) || '';
     document.getElementById('admPayee').value = (payment && payment.payeeName) || '';
-    updateRazorpayToggleUI(!!(payment && payment.razorpayEnabled), !!(payment && payment.gatewayEnabled), payment);
+    updateRazorpayToggleUI(
+      !!razorpayStatus.enabled,
+      !!razorpayStatus.configured,
+      razorpayStatus
+    );
     document.getElementById('admPayNote').value = (payment && payment.note) || '';
     window._paymentQrDataUrl = (payment && payment.qrDataUrl) || '';
     const qr=document.getElementById('admQrPreview');if(qr){if(window._paymentQrDataUrl){qr.src=window._paymentQrDataUrl;qr.classList.remove('hidden');}else qr.classList.add('hidden');}
@@ -523,7 +530,8 @@ function updateRazorpayToggleUI(enabled, configured, diagnostics){
   if(!configured && diagnostics){
     const prefix=diagnostics.keyIdPrefix || 'missing';
     const secret=diagnostics.secretPresent ? 'present' : 'missing';
-    status.textContent='Razorpay is not detected by Server 1. Key ID: '+prefix+'; secret: '+secret+'. Make sure the Test Mode key is saved and deployed.';
+    const envs=(diagnostics.keyIdEnv||diagnostics.secretEnv)?' Env: '+(diagnostics.keyIdEnv||'missing')+' / '+(diagnostics.secretEnv||'missing')+'.':'';
+    status.textContent='Razorpay is not detected by Server 1. Key ID: '+prefix+'; secret: '+secret+'.'+envs+' Build: '+String(diagnostics.build||'unknown')+'.';
   } else {
     status.textContent=enabled
       ? 'Razorpay is enabled. Students can see the Razorpay payment option.'
