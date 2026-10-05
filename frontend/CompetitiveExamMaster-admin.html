@@ -490,6 +490,34 @@ async function loadAdminTests(){
   }catch(e){ box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
 }
 
+/* ---------- admin: ratings & feedback ---------- */
+async function loadAdminRatings(){
+  const box=document.getElementById('ratingTable');
+  if(!box)return;
+  try{
+    const {ratings=[]}=await api('GET','/api/admin/ratings');
+    if(!ratings.length){
+      box.innerHTML='<tr><td colspan="5">No student ratings or feedback yet.</td></tr>';
+      return;
+    }
+    box.innerHTML=ratings.map(r=>{
+      const stars='★'.repeat(Math.max(0,Math.min(5,Number(r.rating)||0)))+'☆'.repeat(Math.max(0,5-(Number(r.rating)||0)));
+      const attempt=Number(r.attemptNumber)||1;
+      const feedback=r.feedback?esc(r.feedback):'<span class="muted">No written feedback</span>';
+      const when=r.updatedAt||r.createdAt;
+      return '<tr>'+
+        '<td>'+esc(r.testTitle||r.testId||'—')+'<br><span class="muted">Attempt '+attempt+'</span></td>'+
+        '<td>'+esc(r.userName||'Student')+'</td>'+
+        '<td><span aria-label="'+(Number(r.rating)||0)+' out of 5">'+stars+'</span></td>'+
+        '<td style="white-space:pre-wrap;max-width:420px">'+feedback+'</td>'+
+        '<td>'+ (when?new Date(when).toLocaleString():'—') +'</td>'+
+      '</tr>';
+    }).join('');
+  }catch(e){
+    box.innerHTML='<tr><td colspan="5">Could not load ratings: '+esc(e.message)+'</td></tr>';
+  }
+}
+
 /* ---------- admin: subscriptions & payment details ---------- */
 const fmtDate = d => d ? new Date(d).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}) : '—';
 
