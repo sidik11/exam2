@@ -1859,10 +1859,24 @@ window.showResultScreen = function(r){
       <p class="muted">See each question with the correct answer and a full explanation, one at a time.</p>
       <button class="rh-btn primary" onclick="openSolutionViewer(0)">Open Solutions →</button>
     `;
-    box.insertAdjacentHTML('beforeend','<div id="postExamRating" class="card" style="margin-top:18px"><div class="section-title" style="margin-top:0">⭐ Rate this test</div><p class="muted">How useful was this test for you?</p><div id="ratingStars" style="display:flex;gap:6px;margin:10px 0">'+[1,2,3,4,5].map(n=>'<button type="button" class="secondary" style="font-size:22px;padding:7px 11px" onclick="selectTestRating('+n+')">☆</button>').join('')+'</div><textarea id="ratingFeedback" maxlength="1000" placeholder="Optional feedback" style="width:100%;min-height:80px;padding:10px;border:1px solid #d1d5db;border-radius:10px"></textarea><div class="row" style="margin-top:10px"><span id="ratingMsg" class="muted"></span><button class="primary-btn" type="button" onclick="submitTestRating()">Submit Rating</button></div></div>');
+    box.insertAdjacentHTML('beforeend','<div id="postExamRating" class="card" style="margin-top:18px"><div class="section-title" style="margin-top:0">⭐ Rate this test</div><div id="feedbackAttemptState" class="muted">Checking feedback status…</div></div>');
     window.selectedTestRating=0;
     window.selectTestRating=function(n){window.selectedTestRating=n;document.querySelectorAll('#ratingStars button').forEach((el,i)=>el.textContent=i<n?'★':'☆');};
-    window.submitTestRating=async function(){try{if(!window.selectedTestRating)throw new Error('Choose a star rating first.');const rr=await api('POST','/api/tests/rating',{testId:r.testId,rating:window.selectedTestRating,feedback:document.getElementById('ratingFeedback').value});msg('ratingMsg',rr.message,true);document.querySelector('#postExamRating button.primary-btn').disabled=true;}catch(e){msg('ratingMsg',e.message);}};
+    window.submitTestRating=async function(){try{if(!window.selectedTestRating)throw new Error('Choose a rating from 1 to 5 stars.');const rr=await api('POST','/api/tests/rating',{testId:r.testId,submissionId:r.submissionId,rating:window.selectedTestRating,feedback:document.getElementById('ratingFeedback').value});msg('ratingMsg',rr.message,true);document.getElementById('postExamRating').innerHTML='<div class="section-title" style="margin-top:0">✅ Feedback submitted</div><p class="muted">You have already submitted feedback for this attempt. Re-attempt the test to submit feedback again.</p>';}catch(e){msg('ratingMsg',e.message);}};
+    (async function(){
+      const state=document.getElementById('feedbackAttemptState');
+      if(!state)return;
+      try{
+        const rr=await api('GET','/api/tests/ratings/mine?testId='+encodeURIComponent(r.testId)+'&submissionId='+encodeURIComponent(r.submissionId||''));
+        if(rr.rating){
+          state.innerHTML='✅ Feedback already submitted for attempt '+String(r.attemptNumber||rr.rating.attemptNumber||1)+'.<br><span class="muted">Re-attempt the test to submit feedback again.</span>';
+          return;
+        }
+        state.innerHTML='<p class="muted">How useful was this test for you?</p><div id="ratingStars" style="display:flex;gap:6px;margin:10px 0">'+[1,2,3,4,5].map(n=>'<button type="button" class="secondary" style="font-size:22px;padding:7px 11px" onclick="selectTestRating('+n+')">☆</button>').join('')+'</div><textarea id="ratingFeedback" maxlength="1000" placeholder="Optional feedback" style="width:100%;min-height:80px;padding:10px;border:1px solid #d1d5db;border-radius:10px"></textarea><div class="row" style="margin-top:10px"><span id="ratingMsg" class="muted"></span><button class="primary-btn" type="button" onclick="submitTestRating()">Submit Feedback</button></div>';
+      }catch(e){
+        state.textContent='Feedback status could not be loaded. You can try again.';
+      }
+    })();
 };
 
 
