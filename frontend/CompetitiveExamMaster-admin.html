@@ -185,7 +185,7 @@ main{max-width:1240px;margin:auto;padding:30px 28px 44px}.section>h2{font-size:3
     <div class="panel-card" style="margin:12px 0;padding:16px;background:#f8fafc;border:1px solid #dbe3ef">
       <div class="row" style="align-items:center">
         <div style="flex:1;min-width:220px">
-          <b style="font-size:16px">Razorpay Test Mode</b>
+          <b style="font-size:16px">Razorpay Enable / Disable</b>
           <div id="razorpayToggleStatus" class="muted" style="margin-top:4px">Checking Razorpay status…</div>
         </div>
         <button id="razorpayToggleBtn" type="button" class="danger-btn" onclick="toggleRazorpay()" disabled>Razorpay: OFF</button>
@@ -461,15 +461,13 @@ async function loadAdminSystemStatus(){
       api('GET','/api/admin/system-status'),api('GET','/api/plans')
     ]);
     const storageText=storagePersistent?'Registration data is saved in persistent storage.':'This server is using temporary demo storage; registrations and payment records can disappear when it restarts. Configure the database connection before using it with real students.';
-    let gatewayReady=paymentEnabled;
-    if(!gatewayReady&&payment?.gatewayUrl){
-      try{
-        const response=await fetch(String(payment.gatewayUrl).replace(/\/+$/,'')+'/api/plans');
-        const remote=await response.json().catch(()=>({}));
-        gatewayReady=response.ok&&remote.paymentsEnabled===true;
-      }catch(_){}
-    }
-    const paymentText=gatewayReady?'Razorpay Test Mode is ready for trial payments.':payment?.upiId?'Razorpay Test Mode is not ready; students can pay by the saved UPI ID.':'No payment method is ready. Add Razorpay Test Mode keys to the server environment, or save a UPI ID below.';
+    const gatewayReady=paymentEnabled===true;
+    const gatewayEnabled=payment?.razorpayEnabled===true;
+    const paymentText=gatewayEnabled&&gatewayReady
+      ? 'Razorpay Test Mode is enabled and ready for trial payments.'
+      : payment?.upiId
+        ? 'Razorpay is disabled; students can pay by the saved manual UPI method.'
+        : 'Razorpay is disabled and no manual UPI method is configured yet.';
     box.textContent=storageText+' '+paymentText;
     box.className='panel-card '+(storagePersistent&&paymentEnabled?'success':'muted');
   }catch(e){box.textContent='Could not check data storage and payment readiness: '+e.message;}
