@@ -1503,7 +1503,7 @@ window.choosePlan = function(id, forceManual){
       <p class="muted" style="text-align:center">UPI • Cards • Net banking • Wallets — Premium activates after Razorpay confirms payment.</p>
       <p class="muted" style="text-align:center">Razorpay Test Mode is enabled for trial payments; test transactions do not charge real money.</p>
       <p id="premMsg" class="muted" style="text-align:center"></p>
-      ${payment.upiId ? `<p style="text-align:center"><a href="javascript:void(0)" onclick="choosePlan('${esc(p.id)}',true)">Pay manually by UPI instead</a></p>` : ''}
+      ${payment.upiId ? `<p style="text-align:center;margin-bottom:4px"><a href="javascript:void(0)" onclick="choosePlan('${esc(p.id)}',true)">Pay manually by UPI instead</a></p><p class="muted" style="text-align:center;margin-top:4px">Manual payment takes time for Admin approval. Your Premium subscription starts only after the Admin approves your payment. Please wait for approval.</p>` : ''}
       <button class="secondary" onclick="document.getElementById('premiumPay').classList.add('hidden')">Cancel</button>`;
     pay.scrollIntoView({behavior:'smooth'});
     return;
