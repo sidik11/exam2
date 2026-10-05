@@ -82,7 +82,7 @@ main{max-width:1240px;margin:auto;padding:30px 28px 44px}.section>h2{font-size:3
 <div class="brand-row">
   <img id="brandLogo" class="hidden" alt="logo">
   <div>
-    <div class="brand" id="brandName">📚 Exam Master</div>
+    <div class="brand" id="brandName">Exam Master</div>
     <div class="sub">Admin Panel<span class="admin-badge">ADMIN</span></div>
   </div>
 </div>
@@ -761,7 +761,7 @@ async function loadBranding(){
   try{
     const { settings } = await api('GET','/api/settings');
     if(settings.institutionName){
-      document.getElementById('brandName').textContent = '📚 ' + settings.institutionName;
+      document.getElementById('brandName').textContent = settings.institutionName;
       document.title = 'Admin Panel – ' + settings.institutionName;
       document.getElementById('siteFooter').textContent = 'Admin Panel • ' + settings.institutionName;
     }
