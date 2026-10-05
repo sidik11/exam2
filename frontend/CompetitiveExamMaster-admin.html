@@ -498,7 +498,7 @@ async function loadSubscriptionAdmin(){
     const { plans, payment } = await api('GET','/api/plans');
     document.getElementById('admUpi').value = (payment && payment.upiId) || '';
     document.getElementById('admPayee').value = (payment && payment.payeeName) || '';
-    updateRazorpayToggleUI(!!(payment && payment.razorpayEnabled), !!(payment && payment.gatewayEnabled));
+    updateRazorpayToggleUI(!!(payment && payment.razorpayEnabled), !!(payment && payment.gatewayEnabled), payment);
     document.getElementById('admPayNote').value = (payment && payment.note) || '';
     window._paymentQrDataUrl = (payment && payment.qrDataUrl) || '';
     const qr=document.getElementById('admQrPreview');if(qr){if(window._paymentQrDataUrl){qr.src=window._paymentQrDataUrl;qr.classList.remove('hidden');}else qr.classList.add('hidden');}
@@ -513,18 +513,22 @@ async function loadSubscriptionAdmin(){
   }catch(e){ document.getElementById('subTable').innerHTML = `<tr><td colspan="7">${esc(e.message)}</td></tr>`; }
 }
 
-function updateRazorpayToggleUI(enabled, configured){
+function updateRazorpayToggleUI(enabled, configured, diagnostics){
   const btn=document.getElementById('razorpayToggleBtn');
   const status=document.getElementById('razorpayToggleStatus');
   if(!btn||!status)return;
   btn.disabled=!configured;
   btn.textContent=enabled?'Razorpay: ON':'Razorpay: OFF';
   btn.className=enabled?'success-btn':'danger-btn';
-  status.textContent=!configured
-    ? 'Razorpay keys are not configured on Server 1, so Razorpay cannot be enabled.'
-    : enabled
+  if(!configured && diagnostics){
+    const prefix=diagnostics.keyIdPrefix || 'missing';
+    const secret=diagnostics.secretPresent ? 'present' : 'missing';
+    status.textContent='Razorpay is not detected by Server 1. Key ID: '+prefix+'; secret: '+secret+'. Make sure the Test Mode key is saved and deployed.';
+  } else {
+    status.textContent=enabled
       ? 'Razorpay is enabled. Students can see the Razorpay payment option.'
       : 'Razorpay is disabled. Students will see manual UPI payment only.';
+  }
 }
 async function toggleRazorpay(){
   const btn=document.getElementById('razorpayToggleBtn');
