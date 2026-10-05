@@ -312,6 +312,29 @@ tr:last-child td{border-bottom:0}tbody tr:hover{background:var(--surface)}
 .quiz-layout{gap:20px}.quiz-palette{background:var(--card);border:1px solid var(--border);box-shadow:var(--shadow)}
 .palette-btn{transition:transform .15s,box-shadow .15s}.palette-btn:hover{transform:scale(1.06)}
 .tb-exam{border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);background:var(--card)}
+/* Mobile/fullscreen exam must scroll inside the fullscreen element.
+   Mobile browsers constrain the fullscreen element to the viewport; without
+   an explicit overflow container, content below the first question can become
+   unreachable even though the page itself is long. */
+#quiz:fullscreen,#quiz:-webkit-full-screen{
+  width:100vw;
+  height:100dvh;
+  max-height:100dvh;
+  margin:0!important;
+  padding:0!important;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  background:var(--card);
+}
+#quiz:fullscreen .tb-exam,#quiz:-webkit-full-screen .tb-exam{
+  min-height:100%;
+  border-radius:0;
+}
+#quiz:fullscreen .tb-body,#quiz:-webkit-full-screen .tb-body{
+  min-height:0;
+}
 .tb-topbar{background:linear-gradient(135deg,#0b1227,#25164a 58%,#701a35);padding:14px 18px}
 .tb-timer-box{border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.38);border-radius:9px;padding:6px 11px}
 .tb-sections{background:var(--surface);border-color:var(--border);padding:8px 10px}
@@ -349,7 +372,9 @@ footer{padding:32px 16px;color:var(--muted)}
   header{padding:13px 12px}.brand{font-size:18px}.sub{font-size:10px}
   main{padding:16px 12px}.hero{border-radius:20px;padding:22px}.hero h1{font-size:28px}
   .card,.auth-card,.panel-card{padding:17px}.tb-exam{border-radius:15px}
-  .tb-main{padding:17px 14px}.tb-sidebar{padding:14px}
+  .tb-main{padding:17px 14px}
+  .tb-body{display:block}
+  .tb-sidebar{padding:14px;min-width:0;max-width:none;width:100%;border-left:0;border-top:1px solid #e5e7eb}
 }
 @media(max-width:480px){
   nav button{padding:8px 11px;font-size:12px}.hero p{font-size:13px}
