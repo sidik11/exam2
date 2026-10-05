@@ -710,7 +710,7 @@ async function api(method,url,body){
   if(!r.ok) throw new Error(data.error||data.message||'Request failed.');
   return data;
 }
-console.log('Exam Master frontend build: frontend-csrf-disabled-2026-10-05');
+console.log('Exam Master frontend build: razorpay-toggle-2026-10-05');
 function esc(value){const s=String(value??'');return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function msg(id,text,ok=false){const el=document.getElementById(id);if(!el)return;el.textContent=String(text||'');el.className=ok?'success':'error';}
 function authError(e){return String((e&&e.message)||'Unable to complete the request.');}
