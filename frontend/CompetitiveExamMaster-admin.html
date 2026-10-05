@@ -182,6 +182,16 @@ main{max-width:1240px;margin:auto;padding:30px 28px 44px}.section>h2{font-size:3
   <div class="panel-card" style="margin-top:18px">
     <h3>⭐ Premium Subscriptions</h3>
     <p class="muted">One Premium payment lets a student open every paid test series. Students can use Razorpay Test Mode when server test keys are configured, or manual UPI after you add a UPI ID below.</p>
+    <div class="panel-card" style="margin:12px 0;padding:16px;background:#f8fafc;border:1px solid #dbe3ef">
+      <div class="row" style="align-items:center">
+        <div style="flex:1;min-width:220px">
+          <b style="font-size:16px">Razorpay Test Mode</b>
+          <div id="razorpayToggleStatus" class="muted" style="margin-top:4px">Checking Razorpay status…</div>
+        </div>
+        <button id="razorpayToggleBtn" type="button" class="danger-btn" onclick="toggleRazorpay()" disabled>Razorpay: OFF</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0">OFF = Razorpay is completely hidden from students and only manual UPI payment is available. ON = students can see and use the configured Razorpay Test Mode.</p>
+    </div>
     <h4>Payment details shown to students</h4>
     <div class="row">
       <div class="form-row" style="flex:1"><label>UPI ID</label><input id="admUpi" placeholder="name@bank"></div>
@@ -490,6 +500,7 @@ async function loadSubscriptionAdmin(){
     const { plans, payment } = await api('GET','/api/plans');
     document.getElementById('admUpi').value = (payment && payment.upiId) || '';
     document.getElementById('admPayee').value = (payment && payment.payeeName) || '';
+    updateRazorpayToggleUI(!!(payment && payment.razorpayEnabled), !!(payment && payment.gatewayEnabled));
     document.getElementById('admPayNote').value = (payment && payment.note) || '';
     window._paymentQrDataUrl = (payment && payment.qrDataUrl) || '';
     const qr=document.getElementById('admQrPreview');if(qr){if(window._paymentQrDataUrl){qr.src=window._paymentQrDataUrl;qr.classList.remove('hidden');}else qr.classList.add('hidden');}
@@ -504,6 +515,33 @@ async function loadSubscriptionAdmin(){
   }catch(e){ document.getElementById('subTable').innerHTML = `<tr><td colspan="7">${esc(e.message)}</td></tr>`; }
 }
 
+function updateRazorpayToggleUI(enabled, configured){
+  const btn=document.getElementById('razorpayToggleBtn');
+  const status=document.getElementById('razorpayToggleStatus');
+  if(!btn||!status)return;
+  btn.disabled=!configured;
+  btn.textContent=enabled?'Razorpay: ON':'Razorpay: OFF';
+  btn.className=enabled?'success-btn':'danger-btn';
+  status.textContent=!configured
+    ? 'Razorpay keys are not configured on Server 1, so Razorpay cannot be enabled.'
+    : enabled
+      ? 'Razorpay is enabled. Students can see the Razorpay payment option.'
+      : 'Razorpay is disabled. Students will see manual UPI payment only.';
+}
+async function toggleRazorpay(){
+  const btn=document.getElementById('razorpayToggleBtn');
+  if(!btn||btn.disabled)return;
+  const currentlyOn=btn.textContent.includes('ON');
+  btn.disabled=true;
+  try{
+    const r=await api('POST','/api/admin/razorpay',{enabled:!currentlyOn});
+    updateRazorpayToggleUI(!!r.enabled,!!r.configured);
+    await loadSubscriptionAdmin();
+  }catch(e){
+    updateRazorpayToggleUI(currentlyOn,true);
+    alert(e.message);
+  }
+}
 window.previewPaymentQr=function(){
   const file=document.getElementById('admQrFile')?.files?.[0];if(!file)return;
   if(!/^image\/(png|jpeg|webp)$/i.test(file.type)){alert('Use PNG, JPG or WebP.');return;}
