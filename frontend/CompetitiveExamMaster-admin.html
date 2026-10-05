@@ -272,26 +272,16 @@ function msg(id,text,ok=false){
   }
 }
 
-let csrfToken = '';
-async function getCsrfToken(force=false){
-  if(csrfToken && !force) return csrfToken;
-  const r=await fetch('/api/auth/csrf',{method:'GET',credentials:'same-origin',cache:'no-store'});
-  const data=await r.json().catch(()=>({}));
-  if(!r.ok || !data.csrfToken) throw new Error(cleanErrorMessage(data.error||'Unable to initialize CSRF protection.'));
-  csrfToken=data.csrfToken;
-  return csrfToken;
-}
 async function api(method,url,body){
   const isExam=url.startsWith('/api/tests')||url==='/api/admin/ratings';
   const requestUrl=isExam?'/exam-api'+url:url;
   const headers={'Content-Type':'application/json','X-CEM-Portal':'admin'};
-  if(!/^(GET|HEAD|OPTIONS)$/i.test(method)) headers['X-CSRF-Token']=await getCsrfToken();
   const r=await fetch(requestUrl,{method,headers,credentials:'same-origin',body:body===undefined?undefined:JSON.stringify(body)});
   const data=await r.json().catch(()=>({}));
   if(!r.ok) throw new Error(cleanErrorMessage(data.error||data.message||'Request failed.'));
   return data;
 }
-console.log('Exam Master frontend build: frontend-csrf-enabled-2026-10-04');
+console.log('Exam Master frontend build: frontend-csrf-disabled-2026-10-05');
 
 let currentUser = null;
 
