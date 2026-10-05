@@ -369,7 +369,7 @@ footer{padding:32px 16px;color:var(--muted)}
 <div class="brand-row">
   <img id="brandLogo" class="hidden" alt="logo">
   <div>
-    <div class="brand" id="brandName">📚 Exam Master</div>
+    <div class="brand" id="brandName">Exam Master</div>
     <div class="sub">Test Series</div>
   </div>
 </div>
@@ -807,7 +807,7 @@ async function loadBranding(){
   try{
     const { settings } = await api('GET','/api/settings');
     if(settings.institutionName){
-      document.getElementById('brandName').textContent = '📚 ' + settings.institutionName;
+      document.getElementById('brandName').textContent = settings.institutionName;
       document.title = settings.institutionName;
       document.getElementById('heroTitle').textContent = settings.institutionName + ' — Prepare Smarter.';
       document.getElementById('siteFooter').textContent = settings.institutionName + ' • Exam Master';
@@ -927,7 +927,7 @@ window.loginUser = async function(){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
 })();
 
-window.logout=async function(){try{await api('POST','/api/auth/logout');}catch(_){}currentUser=null;updateUI();showSection('home');};
+window.logout=async function(){try{await api('POST','/api/auth/logout');}catch(_){}currentUser=null;updateUI();showSection('auth');showAuthTab('login');};
 
 async function loadNotices(target){
   const box=document.getElementById(target==='teacher'?'teacherNoticePanel':'studentNoticePanel');
