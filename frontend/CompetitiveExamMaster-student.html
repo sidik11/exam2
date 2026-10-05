@@ -1305,6 +1305,10 @@ function trackTimeSpent(){
 
 async function loadTests(){
   const grid = document.getElementById('testsGrid');
+  const resultBox=document.getElementById('result');
+  const solutionBox=document.getElementById('solutionViewer');
+  if(resultBox) resultBox.classList.add('hidden');
+  if(solutionBox) solutionBox.classList.add('hidden');
   document.getElementById('testsTitle').textContent = activeCategory ? 'Test Series — ' + activeCategory : 'Test Series — All Modules';
   try{
     const url = '/api/tests' + (activeCategory ? '?category=' + encodeURIComponent(activeCategory) : '');
@@ -1319,7 +1323,7 @@ async function loadTests(){
     document.getElementById('testsHint').textContent = tests.length + ' test series available';
     grid.innerHTML = tests.map(t => {
       const attempted = attemptedSet.has(t.id);
-      const resultBtn = attempted ? `<button class="secondary" onclick="viewSolution('${t.id}')">📊 View the Result</button>` : '';
+      const resultBtn = attempted ? `<button class="secondary" onclick="viewSolution('${t.id}')">📊 Show Result</button>` : '';
       let action;
       if(attempted){
         action = t.attemptPolicy==='reattempt'
@@ -1355,6 +1359,7 @@ window.changeAttemptPolicy = async function(id, value, reload){
 window.viewSolution = async function(id){
   try{
     const r = await api('GET','/api/tests/'+encodeURIComponent(id)+'/solution');
+    showSection('tests');
     showResultScreen(r);
     document.getElementById('result').scrollIntoView({behavior:'smooth'});
   }catch(e){ alert(e.message); }
@@ -1808,8 +1813,13 @@ window.submitTest = async function(){
     trackTimeSpent();
     clearInterval(tbTimerInterval);
     exitExamFullscreen();
-    const r = await api('POST', '/api/tests/'+encodeURIComponent(activeTest.id)+'/submit', { attemptId: activeTest.attemptId, answers: activeAnswers, timeBySubject: activeTimeBySubject });
-    showResultScreen(r);
+    await api('POST', '/api/tests/'+encodeURIComponent(activeTest.id)+'/submit', { attemptId: activeTest.attemptId, answers: activeAnswers, timeBySubject: activeTimeBySubject });
+    lastResult=null;
+    svIndex=0;
+    document.getElementById('quiz').classList.add('hidden');
+    document.getElementById('solutionViewer').classList.add('hidden');
+    document.getElementById('result').classList.add('hidden');
+    showSection('tests');
   }catch(e){ alert(e.message); }
 };
 window.showResultScreen = function(r){
