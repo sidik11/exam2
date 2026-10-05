@@ -1379,11 +1379,13 @@ async function loadPremium(){
   try{
     let { plans, payment } = await api('GET','/api/plans');
     let gatewayReady = payment.gatewayEnabled === true;
-    let gatewayError = '';
     const hasManualUpi=!!String(payment.upiId||'').trim();
-    if(!gatewayReady&&!gatewayError)gatewayError=hasManualUpi
-      ? 'Razorpay Test Mode is unavailable; manual UPI payment is available below.'
-      : 'No payment method is configured yet. Please contact the administrator.';
+    let gatewayError = '';
+    if(!gatewayReady && !hasManualUpi && payment.razorpayEnabled !== true){
+      gatewayError='No manual UPI payment method is configured yet. Please contact the administrator.';
+    } else if(!gatewayReady && !hasManualUpi){
+      gatewayError='Razorpay is not available right now. Please contact the administrator.';
+    }
     const mine = await api('GET','/api/subscription/mine');
     premiumData = { plans, payment, mine, gatewayReady };
     const pending = mine.requests.find(r=>r.status==='pending');
@@ -1396,7 +1398,7 @@ async function loadPremium(){
     if(gatewayError) status.innerHTML += `<p class="muted">${esc(gatewayError)} You can still use manual UPI if it is configured below.</p>`;
     if(pending) status.innerHTML += `<p>⏳ Your payment of ₹${pending.amount} (${esc(pending.planName)}) is waiting for Admin verification.</p>`;
     const savedPayment=readPendingGatewayPayment();
-    if(savedPayment&&savedPayment.studentId===currentUserId())status.innerHTML+='<p class="muted">A previous Razorpay payment still needs confirmation. <button type="button" class="secondary" onclick="retryPendingGatewayPayment()">Retry confirmation</button></p>';
+    if(gatewayReady&&savedPayment&&savedPayment.studentId===currentUserId())status.innerHTML+='<p class="muted">A previous Razorpay payment still needs confirmation. <button type="button" class="secondary" onclick="retryPendingGatewayPayment()">Retry confirmation</button></p>';
     plansBox.innerHTML = plans.length ? plans.map(p=>`
       <div class="card" style="text-align:center">
         <h3>${esc(p.name)}</h3>
@@ -1509,7 +1511,7 @@ window.choosePlan = function(id, forceManual){
   const upi = payment.upiId;
   if(!premiumData.gatewayReady&&!String(upi||'').trim()){
     pay.classList.remove('hidden');
-    pay.innerHTML=`<h3>💳 ${esc(p.name)} Premium</h3><p class="muted">No payment method is ready for this plan. The administrator must configure Razorpay Test Mode on the server or add a UPI ID before students can pay.</p><button class="secondary" onclick="document.getElementById('premiumPay').classList.add('hidden')">Close</button>`;
+    pay.innerHTML=`<h3>💳 ${esc(p.name)} Premium</h3><p class="muted">Manual UPI payment is not configured yet. Please contact the administrator.</p><button class="secondary" onclick="document.getElementById('premiumPay').classList.add('hidden')">Close</button>`;
     pay.scrollIntoView({behavior:'smooth'});
     return;
   }
