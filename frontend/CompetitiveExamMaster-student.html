@@ -1686,8 +1686,10 @@ function startTbTimer(minutes){
 
 function renderSubjectPills(){
   const box = document.getElementById('subjectPills');
-  const subjects = [...new Set(activeTest.questions.map(q=>q.subject))];
-  box.innerHTML = subjects.map(s => `<button class="tb-section-tab" data-s="${esc(s)}" onclick="jumpToSubject(this.dataset.s)">${esc(s)}</button>`).join('');
+  const counts = {};
+  activeTest.questions.forEach(q=>{const name=q.subject||'General';counts[name]=(counts[name]||0)+1;});
+  const subjects = [...new Set(activeTest.questions.map(q=>q.subject||'General'))];
+  box.innerHTML = subjects.map(s => `<button class="tb-section-tab" data-s="${esc(s)}" onclick="jumpToSubject(this.dataset.s)">${esc(s)} <span style="opacity:.8">(${counts[s]||0})</span></button>`).join('');
   highlightActivePill();
 }
 function highlightActivePill(){
@@ -2069,7 +2071,8 @@ function syncSections(){
   const secondaryLangs = getExamLanguages().slice(1);
   secs.forEach(sec=>{
     const rows = sec.querySelectorAll('.qbuilder');
-    sec.querySelector('.nt-sec-count').textContent = '· ' + rows.length + (rows.length===1?' question':' questions');
+    const target=sec.querySelector('.sec-target-count')?.value;
+    sec.querySelector('.nt-sec-count').textContent = '· ' + rows.length + (rows.length===1?' question':' questions') + (target!==''&&target!==undefined ? ' / '+target+' planned' : '');
     rows.forEach((r,i)=>{
       r.querySelector('.q-no').textContent = 'Question ' + (i+1);
       collectTranslations(r);
@@ -2094,7 +2097,8 @@ window.addSection = function(name){
   sec.innerHTML = `
     <div class="nt-sec-head">
       <b class="nt-sec-title">${esc(name)}</b><span class="nt-sec-count"></span>
-      <label style="margin-left:auto">Marks <input type="number" step="any" class="sec-marks" value="1" onchange="applySectionDefaults(this)"></label>
+      <label>Target questions <input type="number" min="0" max="500" class="sec-target-count" value="" placeholder="e.g. 10" style="width:90px" onchange="syncSections()"></label>
+      <label>Marks <input type="number" step="any" class="sec-marks" value="1" onchange="applySectionDefaults(this)"></label>
       <label>Negative <input type="number" step="any" class="sec-neg" value="0" onchange="applySectionDefaults(this)"></label>
       <button type="button" class="secondary" style="padding:6px 10px;font-size:12px" onclick="removeSection(this)">Remove Section</button>
     </div>
@@ -2241,8 +2245,20 @@ window.submitNewTest = async function(){
   const attemptPolicy = document.getElementById('ntAttempts').value;
   const questions = [];
   const subjects = [];
+  const sectionQuestionCounts = {};
+  let sectionCountError = '';
   document.querySelectorAll('#ntQuestions .nt-sec').forEach(sec => {
     const rows = sec.querySelectorAll('.qbuilder');
+    const targetInput=sec.querySelector('.sec-target-count');
+    const targetText=targetInput ? targetInput.value.trim() : '';
+    if(targetText!=='' ){
+      const target=Number(targetText);
+      if(!Number.isInteger(target)||target<1||target>500) sectionCountError = 'Target questions for '+sec.dataset.name+' must be a whole number from 1 to 500.';
+      else {
+        sectionQuestionCounts[sec.dataset.name]=target;
+        if(rows.length!==target) sectionCountError = sec.dataset.name+': target is '+target+' questions, but you added '+rows.length+'. Please match the target before publishing.';
+      }
+    }
     if(rows.length) subjects.push(sec.dataset.name);
     rows.forEach(row => questions.push({
       question: row.querySelector('.q-text').value.trim(),
@@ -2257,8 +2273,11 @@ window.submitNewTest = async function(){
       translations: collectTranslations(row),
     }));
   });
+  if(sectionCountError){ msg('ntMsg',sectionCountError); return; }
+  if(!title){ msg('ntMsg','Enter a test series title.'); return; }
+  if(!questions.length){ msg('ntMsg','Add at least one question.'); return; }
   try{
-    const r = await api('POST','/api/tests', { title, exam, category, subjects, languages, type, duration, attemptPolicy, questions });
+    const r = await api('POST','/api/tests', { title, exam, category, subjects, sectionQuestionCounts, languages, type, duration, attemptPolicy, questions });
     msg('ntMsg', r.message, true);
     refreshModuleViews();
     document.getElementById('ntTitle').value='';
