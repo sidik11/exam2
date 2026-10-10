@@ -1711,21 +1711,9 @@ function localizedQuestion(q){
   }
   return { question: q.question, options: q.options };
 }
-function geometryShapeSvg(shape){
-  const common='fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
-  const shapes={
-    triangle:'<polygon points="130,18 35,142 225,142" '+common+'/><text x="130" y="12" text-anchor="middle" font-size="12" fill="currentColor">A</text><text x="25" y="155" font-size="12" fill="currentColor">B</text><text x="230" y="155" font-size="12" fill="currentColor">C</text>',
-    'right-triangle':'<polygon points="45,135 45,25 220,135" '+common+'/><path d="M45 115 H65 V135" '+common+'/><text x="31" y="20" font-size="12" fill="currentColor">A</text><text x="29" y="151" font-size="12" fill="currentColor">B</text><text x="225" y="151" font-size="12" fill="currentColor">C</text>',
-    circle:'<circle cx="130" cy="80" r="57" '+common+'/><path d="M130 80 L187 80" '+common+'/><circle cx="130" cy="80" r="3" fill="currentColor"/><text x="151" y="70" font-size="12" fill="currentColor">r</text>',
-    square:'<rect x="73" y="23" width="114" height="114" '+common+'/>',
-    rectangle:'<rect x="45" y="38" width="170" height="84" '+common+'/>',
-    parallelogram:'<polygon points="80,30 220,30 180,130 40,130" '+common+'/>',
-    trapezoid:'<polygon points="85,30 175,30 220,130 40,130" '+common+'/>',
-    rhombus:'<polygon points="130,18 215,80 130,142 45,80" '+common+ '/>',
-    'triangle-partition':'<polygon points="130,12 12,148 248,148" '+common+'/><line x1="51" y1="103" x2="91" y2="148" '+common+'/><line x1="91" y1="57" x2="169" y2="148" '+common+'/><text x="130" y="9" text-anchor="middle" font-size="12" fill="currentColor">A</text><text x="2" y="160" font-size="12" fill="currentColor">B</text><text x="249" y="160" font-size="12" fill="currentColor">C</text><text x="37" y="103" font-size="12" fill="currentColor">D</text><text x="88" y="163" font-size="12" fill="currentColor">E</text><text x="77" y="57" font-size="12" fill="currentColor">F</text><text x="169" y="163" font-size="12" fill="currentColor">G</text>'
-  };
-  if(!Object.prototype.hasOwnProperty.call(shapes,shape)) return '';
-  return '<svg viewBox="0 0 260 160" role="img" aria-label="'+shape.replace(/-/g,' ')+' diagram" xmlns="http://www.w3.org/2000/svg">'+shapes[shape]+'</svg>';
+function renderQuestionImage(dataUrl){
+  const value=String(dataUrl||'');
+  return /^data:image\/(jpeg|png|webp);base64,/i.test(value) ? '<img src="'+value+'" alt="Question diagram" style="display:block;max-width:100%;max-height:320px;object-fit:contain;margin:12px auto;border-radius:8px">' : '';
 }
 function loadQ(){
   activeVisited[activeQi] = true;
@@ -1737,7 +1725,7 @@ function loadQ(){
   instructions.textContent=String(q.instructions||'').trim();
   instructions.classList.toggle('hidden',!instructions.textContent);
   const geometry=document.getElementById('qGeometry');
-  geometry.innerHTML=geometryShapeSvg(q.geometryShape||'');
+  geometry.innerHTML=renderQuestionImage(q.imageDataUrl);
   geometry.classList.toggle('hidden',!geometry.innerHTML);
   document.getElementById('options').innerHTML = view.options.map((opt,i)=>{
     const letter = String.fromCharCode(65+i);
@@ -2137,6 +2125,28 @@ window.removeQuestionRow = function(btn){
 };
 
 let qRowCount = 0;
+async function compressQuestionImage(input){
+  const row=input.closest('.qbuilder'), status=row?.querySelector('.q-image-status'), preview=row?.querySelector('.q-image-preview'), hidden=row?.querySelector('.q-image-data');
+  const file=input.files&&input.files[0]; if(!file||!row||!status||!preview||!hidden)return;
+  if(!file.type.startsWith('image/')){status.textContent='Choose a valid image file.';input.value='';return;}
+  if(file.size>15*1024*1024){status.textContent='Image must be smaller than 15 MB before compression.';input.value='';return;}
+  status.textContent='Compressing image…';
+  try{
+    const source=await new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Could not read this image.'))};img.src=url;});
+    const scale=Math.min(1,1200/source.width,1200/source.height),canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(source.width*scale));canvas.height=Math.max(1,Math.round(source.height*scale));
+    const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Image compression is not supported in this browser.');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(source,0,0,canvas.width,canvas.height);
+    let quality=.82,data=canvas.toDataURL('image/jpeg',quality);
+    while(data.length>480000&&quality>.4){quality-=.08;data=canvas.toDataURL('image/jpeg',quality);}
+    if(data.length>520000)throw new Error('Image is still too large after compression. Please choose a smaller image.');
+    hidden.value=data;preview.src=data;preview.classList.remove('hidden');
+    status.textContent='Compressed and ready to save ('+Math.round(data.length*0.75/1024)+' KB).';
+  }catch(err){hidden.value='';preview.src='';preview.classList.add('hidden');status.textContent=err.message||'Image compression failed.';}
+  input.value='';
+}
+window.compressQuestionImage=compressQuestionImage;
+
 function addQuestionRow(prefill, sectionName){
   const p = prefill || {};
   const wanted = cleanSectionName(sectionName || p.subject);
@@ -2166,7 +2176,7 @@ function addQuestionRow(prefill, sectionName){
       <div class="form-row" style="flex:1"><label>Negative Marks</label><input type="number" step="any" class="q-neg" value="${p.negative!==undefined?p.negative:defNeg}"></div>
     </div>
     <div class="form-row"><label>Question Instructions (optional — shown during the exam)</label><textarea class="q-instructions" rows="2" placeholder="e.g. Use the diagram below to answer...">${esc(p.instructions||'')}</textarea></div>
-    <div class="form-row"><label>Geometry Shape / Diagram (optional)</label><select class="q-geometry"><option value="" ${!p.geometryShape?'selected':''}>No shape</option><option value="triangle" ${p.geometryShape==='triangle'?'selected':''}>Triangle</option><option value="right-triangle" ${p.geometryShape==='right-triangle'?'selected':''}>Right triangle</option><option value="circle" ${p.geometryShape==='circle'?'selected':''}>Circle</option><option value="square" ${p.geometryShape==='square'?'selected':''}>Square</option><option value="rectangle" ${p.geometryShape==='rectangle'?'selected':''}>Rectangle</option><option value="parallelogram" ${p.geometryShape==='parallelogram'?'selected':''}>Parallelogram</option><option value="trapezoid" ${p.geometryShape==='trapezoid'?'selected':''}>Trapezoid</option><option value="rhombus" ${p.geometryShape==='rhombus'?'selected':''}>Rhombus</option><option value="triangle-partition" ${p.geometryShape==='triangle-partition'?'selected':''}>Triangle with internal segments (like sample)</option></select><p class="muted" style="margin:4px 0 0">Choose a basic diagram or a triangle with labelled points and internal segments. Optional.</p></div>
+    <div class="form-row"><label>Custom question image (optional)</label><input type="file" class="q-image-file" accept="image/png,image/jpeg,image/webp,image/gif" onchange="compressQuestionImage(this)"><input type="hidden" class="q-image-data" value="${p.imageDataUrl||''}"><img class="q-image-preview ${p.imageDataUrl?'':'hidden'}" src="${p.imageDataUrl||''}" alt="Question image preview" style="display:block;max-width:100%;max-height:180px;object-fit:contain;margin-top:8px;border-radius:8px"><p class="muted q-image-status" style="margin:4px 0 0">${p.imageDataUrl?'Compressed image saved with this question.':'Upload an image; it will be compressed before saving.'}</p></div>
     <div class="form-row"><label>Explanation / Solution (shown to students after they submit — optional)</label><textarea class="q-exp" rows="2" placeholder="Explain why the correct option is right...">${esc(p.explanation||'')}</textarea></div>
   `;
   wrap.translationsData = p.translations || {};
@@ -2207,7 +2217,7 @@ window.importExcel = function(){
           negative: negative !== undefined && negative !== '' ? Number(negative) : 0,
           explanation: explanation !== undefined ? String(explanation).trim() : '',
           instructions: instructions !== undefined ? String(instructions).trim() : '',
-          geometryShape: geometryShape !== undefined ? String(geometryShape).trim().toLowerCase() : '',
+          imageDataUrl: '',
           subject: subj || undefined,
         });
         imported++;
@@ -2242,7 +2252,7 @@ window.submitNewTest = async function(){
       negative: row.querySelector('.q-neg').value,
       explanation: row.querySelector('.q-exp').value.trim(),
       instructions: row.querySelector('.q-instructions').value.trim(),
-      geometryShape: row.querySelector('.q-geometry').value,
+      imageDataUrl: row.querySelector('.q-image-data').value,
       subject: sec.dataset.name,
       translations: collectTranslations(row),
     }));
