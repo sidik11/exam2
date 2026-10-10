@@ -124,6 +124,9 @@ table.sec-table td.sec-name{font-weight:700}
 .tb-mark-pos{background:#17833b}.tb-mark-neg{background:#dc2626}
 .tb-divider{height:2px;background:#dc2626;margin:6px 0 16px}
 .tb-question{font-size:16px;margin:0 0 16px;line-height:1.6}
+.tb-instructions{margin:0 0 12px;padding:10px 12px;border-left:3px solid #64748b;background:#f8fafc;border-radius:8px;color:#334155;white-space:pre-wrap;overflow-wrap:anywhere}
+.tb-geometry{margin:8px 0 18px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;display:flex;justify-content:center;align-items:center;min-height:120px}
+.tb-geometry svg{width:min(100%,320px);height:auto;max-height:220px}
 .tb-options{display:flex;flex-direction:column;gap:2px}
 .tb-option-row{display:flex;align-items:flex-start;gap:12px;padding:12px 6px;border-radius:8px;cursor:pointer;border:1px solid transparent}
 .tb-option-row:hover{background:#f8fafc}
@@ -501,6 +504,8 @@ footer{padding:32px 16px;color:var(--muted)}
         </div>
         <div class="tb-divider" id="qProgressBar"></div>
         <p class="tb-question" id="question"></p>
+        <div id="qInstructions" class="tb-instructions hidden"></div>
+        <div id="qGeometry" class="tb-geometry hidden" aria-label="Question geometry diagram"></div>
         <div id="options" class="tb-options"></div>
         <div class="tb-actions">
           <div class="tb-actions-left">
@@ -700,7 +705,7 @@ footer{padding:32px 16px;color:var(--muted)}
     </div>
     <div class="form-row" style="border:1px dashed #ccc;border-radius:10px;padding:12px">
       <label>📥 Import Questions from Excel (.xlsx / .xls / .csv)</label>
-      <p class="muted" style="margin:0 0 6px">Columns: Question, OptionA, OptionB, OptionC, OptionD, Answer (A/B/C/D), Marks, Negative, Subject.</p>
+      <p class="muted" style="margin:0 0 6px">Columns: Question, OptionA, OptionB, OptionC, OptionD, Answer (A/B/C/D), Marks, Negative, Subject, Explanation, Instructions (optional), GeometryShape (optional).</p>
       <input type="file" id="excelFile" accept=".xlsx,.xls,.csv">
       <div class="row" style="margin-top:6px"><button type="button" class="secondary" onclick="importExcel()">Import into Question Builder</button><span id="excelMsg" class="muted"></span></div>
     </div>
@@ -1706,12 +1711,33 @@ function localizedQuestion(q){
   }
   return { question: q.question, options: q.options };
 }
+function geometryShapeSvg(shape){
+  const common='fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"';
+  const shapes={
+    triangle:'<polygon points="130,18 35,142 225,142" '+common+'/><text x="130" y="12" text-anchor="middle" font-size="12" fill="currentColor">A</text><text x="25" y="155" font-size="12" fill="currentColor">B</text><text x="230" y="155" font-size="12" fill="currentColor">C</text>',
+    'right-triangle':'<polygon points="45,135 45,25 220,135" '+common+'/><path d="M45 115 H65 V135" '+common+'/><text x="31" y="20" font-size="12" fill="currentColor">A</text><text x="29" y="151" font-size="12" fill="currentColor">B</text><text x="225" y="151" font-size="12" fill="currentColor">C</text>',
+    circle:'<circle cx="130" cy="80" r="57" '+common+'/><path d="M130 80 L187 80" '+common+'/><circle cx="130" cy="80" r="3" fill="currentColor"/><text x="151" y="70" font-size="12" fill="currentColor">r</text>',
+    square:'<rect x="73" y="23" width="114" height="114" '+common+'/>',
+    rectangle:'<rect x="45" y="38" width="170" height="84" '+common+'/>',
+    parallelogram:'<polygon points="80,30 220,30 180,130 40,130" '+common+'/>',
+    trapezoid:'<polygon points="85,30 175,30 220,130 40,130" '+common+'/>',
+    rhombus:'<polygon points="130,18 215,80 130,142 45,80" '+common+'/>'
+  };
+  if(!Object.prototype.hasOwnProperty.call(shapes,shape)) return '';
+  return '<svg viewBox="0 0 260 160" role="img" aria-label="'+shape.replace(/-/g,' ')+' diagram" xmlns="http://www.w3.org/2000/svg">'+shapes[shape]+'</svg>';
+}
 function loadQ(){
   activeVisited[activeQi] = true;
   const q = activeTest.questions[activeQi];
   const view = localizedQuestion(q);
   document.getElementById('qTitle').textContent = 'Question No. '+(activeQi+1);
   document.getElementById('question').textContent = view.question;
+  const instructions=document.getElementById('qInstructions');
+  instructions.textContent=String(q.instructions||'').trim();
+  instructions.classList.toggle('hidden',!instructions.textContent);
+  const geometry=document.getElementById('qGeometry');
+  geometry.innerHTML=geometryShapeSvg(q.geometryShape||'');
+  geometry.classList.toggle('hidden',!geometry.innerHTML);
   document.getElementById('options').innerHTML = view.options.map((opt,i)=>{
     const letter = String.fromCharCode(65+i);
     const selected = activeAnswers[activeQi]===letter ? 'selected' : '';
@@ -2138,6 +2164,8 @@ function addQuestionRow(prefill, sectionName){
       <div class="form-row" style="flex:1"><label>Marks</label><input type="number" step="any" class="q-marks" value="${p.marks!==undefined?p.marks:defMarks}"></div>
       <div class="form-row" style="flex:1"><label>Negative Marks</label><input type="number" step="any" class="q-neg" value="${p.negative!==undefined?p.negative:defNeg}"></div>
     </div>
+    <div class="form-row"><label>Question Instructions (optional — shown during the exam)</label><textarea class="q-instructions" rows="2" placeholder="e.g. Use the diagram below to answer...">${esc(p.instructions||'')}</textarea></div>
+    <div class="form-row"><label>Geometry Shape / Diagram (optional)</label><select class="q-geometry"><option value="" ${!p.geometryShape?'selected':''}>No shape</option><option value="triangle" ${p.geometryShape==='triangle'?'selected':''}>Triangle</option><option value="right-triangle" ${p.geometryShape==='right-triangle'?'selected':''}>Right triangle</option><option value="circle" ${p.geometryShape==='circle'?'selected':''}>Circle</option><option value="square" ${p.geometryShape==='square'?'selected':''}>Square</option><option value="rectangle" ${p.geometryShape==='rectangle'?'selected':''}>Rectangle</option><option value="parallelogram" ${p.geometryShape==='parallelogram'?'selected':''}>Parallelogram</option><option value="trapezoid" ${p.geometryShape==='trapezoid'?'selected':''}>Trapezoid</option><option value="rhombus" ${p.geometryShape==='rhombus'?'selected':''}>Rhombus</option></select><p class="muted" style="margin:4px 0 0">Choose a basic diagram to display with the question. Optional.</p></div>
     <div class="form-row"><label>Explanation / Solution (shown to students after they submit — optional)</label><textarea class="q-exp" rows="2" placeholder="Explain why the correct option is right...">${esc(p.explanation||'')}</textarea></div>
   `;
   wrap.translationsData = p.translations || {};
@@ -2168,7 +2196,7 @@ window.importExcel = function(){
       let imported = 0;
       rows.forEach((row, i) => {
         if (i === 0) return;
-        const [question, a, b, c, d, answer, marks, negative, subject, explanation] = row;
+        const [question, a, b, c, d, answer, marks, negative, subject, explanation, instructions, geometryShape] = row;
         if (!question || !a || !b || !c || !d) return;
         const subj = subject ? String(subject).trim() : '';
         addQuestionRow({
@@ -2177,6 +2205,8 @@ window.importExcel = function(){
           marks: marks !== undefined && marks !== '' ? Number(marks) : 1,
           negative: negative !== undefined && negative !== '' ? Number(negative) : 0,
           explanation: explanation !== undefined ? String(explanation).trim() : '',
+          instructions: instructions !== undefined ? String(instructions).trim() : '',
+          geometryShape: geometryShape !== undefined ? String(geometryShape).trim().toLowerCase() : '',
           subject: subj || undefined,
         });
         imported++;
@@ -2210,6 +2240,8 @@ window.submitNewTest = async function(){
       marks: row.querySelector('.q-marks').value,
       negative: row.querySelector('.q-neg').value,
       explanation: row.querySelector('.q-exp').value.trim(),
+      instructions: row.querySelector('.q-instructions').value.trim(),
+      geometryShape: row.querySelector('.q-geometry').value,
       subject: sec.dataset.name,
       translations: collectTranslations(row),
     }));
