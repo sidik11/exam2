@@ -1696,20 +1696,22 @@ function startTbTimer(minutes){
 
 function renderSubjectPills(){
   const box = document.getElementById('subjectPills');
+  if(!box || !activeTest || !Array.isArray(activeTest.questions))return;
   const counts = {};
-  activeTest.questions.forEach(q=>{const name=q.subject||'General';counts[name]=(counts[name]||0)+1;});
-  const subjects = [...new Set(activeTest.questions.map(q=>q.subject||'General'))];
-  box.innerHTML = subjects.map(s => `<button class="tb-section-tab" data-s="${esc(s)}" onclick="jumpToSubject(this.dataset.s)">${esc(s)} <span style="opacity:.8">(${counts[s]||0})</span></button>`).join('');
+  activeTest.questions.forEach(q=>{const name=String(q.subject||'General').trim()||'General';counts[name]=(counts[name]||0)+1;});
+  const subjects = [...new Set(activeTest.questions.map(q=>String(q.subject||'General').trim()||'General'))];
+  box.innerHTML = subjects.map(section => `<button type="button" class="tb-section-tab" data-s="${esc(section)}" onclick="jumpToSubject(this.dataset.s)">${esc(section)} <span style="opacity:.8">(${counts[section]||0})</span></button>`).join('');
   highlightActivePill();
 }
 function highlightActivePill(){
-  const current = activeTest.questions[activeQi].subject;
-  document.querySelectorAll('.tb-section-tab').forEach(p => p.classList.toggle('active', p.textContent===current));
+  if(!activeTest || !activeTest.questions || !activeTest.questions[activeQi])return;
+  const current = String(activeTest.questions[activeQi].subject||'General').trim()||'General';
+  document.querySelectorAll('.tb-section-tab').forEach(p => p.classList.toggle('active', p.dataset.s===current));
   const nameEl = document.getElementById('tbSectionName');
-  if(nameEl) nameEl.textContent = current || 'General';
+  if(nameEl) nameEl.textContent = current;
 }
 window.jumpToSubject = function(subject){
-  const idx = activeTest.questions.findIndex(q => q.subject === subject);
+  const idx = activeTest.questions.findIndex(q => (String(q.subject||'General').trim()||'General') === subject);
   if(idx >= 0){ trackTimeSpent(); activeQi = idx; loadQ(); }
 };
 
