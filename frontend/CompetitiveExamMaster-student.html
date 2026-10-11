@@ -2353,13 +2353,50 @@ window.deleteTest = async function(id, title){
 
 async function loadMyTests(){
   const box = document.getElementById('myTests');
-  if(!currentUser || currentUser.role!=='teacher'){ box.innerHTML=''; return; }
+  if(!box) return;
+  if(!currentUser || currentUser.role!=='teacher'){ box.replaceChildren(); return; }
   try{
-    const { tests } = await api('GET','/api/tests/mine');
-    box.innerHTML = tests.length ? `<div class="table-wrap"><table><thead><tr><th>Title</th><th>Module</th><th>Exam</th><th>Sections</th><th>Type</th><th>Questions</th><th>Duration</th><th>Attempts</th><th>Action</th></tr></thead><tbody>
-      ${tests.map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${esc(t.exam)}</td><td>${(t.subjects||[]).map(esc).join(', ')}</td><td>${t.type}</td><td>${t.questionCount}</td><td>${t.duration} min</td><td><select onchange="changeAttemptPolicy('${esc(t.id)}', this.value, loadMyTests)"><option value="reattempt" ${t.attemptPolicy!=='once'?'selected':''}>🔁 Reattempt allowed</option><option value="once" ${t.attemptPolicy==='once'?'selected':''}>🔒 One attempt only</option></select></td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="secondary" data-id="${esc(t.id)}" onclick="editTest(this.dataset.id)">✏️ Edit</button><button type="button" class="secondary" data-id="${esc(t.id)}" data-title="${esc(t.title)}" onclick="deleteTest(this.dataset.id, this.dataset.title)">🗑 Delete</button></div></td></tr>`).join('')}`
-    </tbody></table></div>` : '<p class="muted">You have not published any test series yet.</p>';
-  }catch(e){ box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
+    const { tests = [] } = await api('GET','/api/tests/mine');
+    if(!tests.length){
+      box.innerHTML = '<p class="muted">You have not published any test series yet.</p>';
+      return;
+    }
+    const wrap=document.createElement('div');
+    wrap.className='table-wrap';
+    const table=document.createElement('table');
+    const thead=document.createElement('thead');
+    const headRow=document.createElement('tr');
+    ['Title','Module','Exam','Sections','Type','Questions','Duration','Attempts','Action'].forEach(label=>{
+      const th=document.createElement('th'); th.textContent=label; headRow.appendChild(th);
+    });
+    thead.appendChild(headRow); table.appendChild(thead);
+    const tbody=document.createElement('tbody');
+    tests.forEach(t=>{
+      const tr=document.createElement('tr');
+      const values=[t.title,t.category||'',t.exam,(t.subjects||[]).join(', '),t.type,t.questionCount,String(t.duration)+' min'];
+      values.forEach(value=>{const td=document.createElement('td');td.textContent=String(value??'');tr.appendChild(td);});
+      const attemptTd=document.createElement('td');
+      const attemptSelect=document.createElement('select');
+      [['reattempt','🔁 Reattempt allowed'],['once','🔒 One attempt only']].forEach(([value,label])=>{
+        const option=document.createElement('option');option.value=value;option.textContent=label;attemptSelect.appendChild(option);
+      });
+      attemptSelect.value=t.attemptPolicy==='once'?'once':'reattempt';
+      attemptSelect.addEventListener('change',()=>changeAttemptPolicy(t.id,attemptSelect.value,loadMyTests));
+      attemptTd.appendChild(attemptSelect);tr.appendChild(attemptTd);
+      const actionTd=document.createElement('td');
+      const actions=document.createElement('div');actions.className='row';actions.style.gap='6px';actions.style.flexWrap='wrap';
+      const editBtn=document.createElement('button');editBtn.type='button';editBtn.className='secondary';editBtn.textContent='✏️ Edit';
+      editBtn.addEventListener('click',()=>window.editTest(t.id));
+      const deleteBtn=document.createElement('button');deleteBtn.type='button';deleteBtn.className='secondary';deleteBtn.textContent='🗑 Delete';
+      deleteBtn.addEventListener('click',()=>window.deleteTest(t.id,String(t.title||'')));
+      actions.append(editBtn,deleteBtn);actionTd.appendChild(actions);tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);wrap.appendChild(table);box.replaceChildren(wrap);
+  }catch(e){
+    box.innerHTML = '<p class="muted"></p>';
+    box.firstElementChild.textContent=String(e.message||'Could not load your test series.');
+  }
 }
 
 
