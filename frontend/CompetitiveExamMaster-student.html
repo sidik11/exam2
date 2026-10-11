@@ -2335,9 +2335,9 @@ window.submitNewTest = async function(){
     const r = editingTestId
       ? await api('PUT','/api/tests/'+encodeURIComponent(editingTestId),payload)
       : await api('POST','/api/tests',payload);
-    msg('ntMsg', r.message, true);
     refreshModuleViews();
     resetTestEditor();
+    msg('ntMsg', r.message, true);
     loadMyTests();
   }catch(e){ msg('ntMsg', e.message); }
 };
