@@ -711,7 +711,7 @@ footer{padding:32px 16px;color:var(--muted)}
     </div>
     <p id="ntSecEmpty" class="muted" style="border:1px dashed #ccc;border-radius:10px;padding:14px">No sections yet. Add a section above (or import an Excel file) and then add questions inside it.</p>
     <div id="ntQuestions"></div>
-    <div class="row" style="margin-top:14px"><button class="primary-btn" onclick="submitNewTest()">Publish Test Series</button></div>
+    <div class="row" style="margin-top:14px;flex-wrap:wrap"><button id="ntSubmitBtn" class="primary-btn" onclick="submitNewTest()">Publish Test Series</button><button id="ntCancelEditBtn" type="button" class="secondary hidden" onclick="cancelTestEdit()">Cancel Editing</button></div>
     <p id="ntMsg"></p>
   </div>
 
@@ -2235,6 +2235,60 @@ window.importExcel = function(){
   reader.readAsArrayBuffer(file);
 };
 
+let editingTestId = null;
+
+function resetTestEditor(){
+  editingTestId=null;
+  document.getElementById('ntSubmitBtn').textContent='Publish Test Series';
+  document.getElementById('ntCancelEditBtn').classList.add('hidden');
+  document.getElementById('ntTitle').value='';
+  document.getElementById('ntExam').value='Competitive Exam';
+  document.getElementById('ntLanguages').value='English';
+  document.getElementById('ntType').value='FREE';
+  document.getElementById('ntDuration').value='30';
+  document.getElementById('ntAttempts').value='reattempt';
+  document.getElementById('ntQuestions').innerHTML='';
+  document.getElementById('ntNewSection').value='';
+  qRowCount=0;
+  syncSections();
+  msg('ntMsg','');
+}
+window.cancelTestEdit=function(){ resetTestEditor(); };
+
+window.editTest=async function(id){
+  try{
+    const data=await api('GET','/api/tests/'+encodeURIComponent(id)+'/edit');
+    const t=data.test;
+    if(!t||!Array.isArray(t.questions)) throw new Error('The test series could not be loaded for editing.');
+    resetTestEditor();
+    editingTestId=t.id;
+    document.getElementById('ntTitle').value=t.title||'';
+    document.getElementById('ntExam').value=t.exam||'Competitive Exam';
+    document.getElementById('ntLanguages').value=(Array.isArray(t.languages)&&t.languages.length?t.languages:['English']).join(', ');
+    document.getElementById('ntType').value=String(t.type||'free').toUpperCase()==='PAID'?'PAID':'FREE';
+    document.getElementById('ntDuration').value=t.duration||30;
+    document.getElementById('ntAttempts').value=t.attemptPolicy==='once'?'once':'reattempt';
+    const categorySelect=document.getElementById('ntCategory');
+    const categoryOption=[...categorySelect.options].find(o=>o.value===t.category||o.textContent.trim()===t.category);
+    if(categoryOption) categorySelect.value=categoryOption.value;
+    const sectionNames=[...new Set([...(Array.isArray(t.subjects)?t.subjects:[]),...t.questions.map(q=>q.subject||'General')])];
+    sectionNames.forEach(name=>addSection(name));
+    t.questions.forEach(q=>addQuestionRow({
+      question:q.question,a:q.options?.[0]||'',b:q.options?.[1]||'',c:q.options?.[2]||'',d:q.options?.[3]||'',
+      answer:q.answer||'A',marks:q.marks,negative:q.negative,explanation:q.explanation||'',instructions:q.instructions||'',
+      imageDataUrl:q.imageDataUrl||'',translations:q.translations||{},subject:q.subject||'General'
+    },q.subject||'General'));
+    for(const [name,count] of Object.entries(t.sectionQuestionCounts||{})){
+      const sec=findSection(name); if(sec) sec.querySelector('.sec-target-count').value=count;
+    }
+    syncSections();
+    document.getElementById('ntSubmitBtn').textContent='Save Changes to Published Series';
+    document.getElementById('ntCancelEditBtn').classList.remove('hidden');
+    msg('ntMsg','Editing published series: '+t.title+'. Changes will be saved to the live test series.',true);
+    document.getElementById('ntTitle').scrollIntoView({behavior:'smooth',block:'center'});
+  }catch(e){alert('Could not open this test series for editing: '+e.message);}
+};
+
 window.submitNewTest = async function(){
   const title = document.getElementById('ntTitle').value.trim();
   const exam = document.getElementById('ntExam').value.trim();
@@ -2277,14 +2331,13 @@ window.submitNewTest = async function(){
   if(!title){ msg('ntMsg','Enter a test series title.'); return; }
   if(!questions.length){ msg('ntMsg','Add at least one question.'); return; }
   try{
-    const r = await api('POST','/api/tests', { title, exam, category, subjects, sectionQuestionCounts, languages, type, duration, attemptPolicy, questions });
+    const payload={ title, exam, category, subjects, sectionQuestionCounts, languages, type, duration, attemptPolicy, questions };
+    const r = editingTestId
+      ? await api('PUT','/api/tests/'+encodeURIComponent(editingTestId),payload)
+      : await api('POST','/api/tests',payload);
     msg('ntMsg', r.message, true);
     refreshModuleViews();
-    document.getElementById('ntTitle').value='';
-    document.getElementById('ntLanguages').value='English';
-    document.getElementById('ntQuestions').innerHTML='';
-    qRowCount = 0;
-    syncSections();
+    resetTestEditor();
     loadMyTests();
   }catch(e){ msg('ntMsg', e.message); }
 };
@@ -2304,7 +2357,7 @@ async function loadMyTests(){
   try{
     const { tests } = await api('GET','/api/tests/mine');
     box.innerHTML = tests.length ? `<div class="table-wrap"><table><thead><tr><th>Title</th><th>Module</th><th>Exam</th><th>Sections</th><th>Type</th><th>Questions</th><th>Duration</th><th>Attempts</th><th>Action</th></tr></thead><tbody>
-      ${tests.map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${esc(t.exam)}</td><td>${(t.subjects||[]).map(esc).join(', ')}</td><td>${t.type}</td><td>${t.questionCount}</td><td>${t.duration} min</td><td><select onchange="changeAttemptPolicy('${esc(t.id)}', this.value, loadMyTests)"><option value="reattempt" ${t.attemptPolicy!=='once'?'selected':''}>🔁 Reattempt allowed</option><option value="once" ${t.attemptPolicy==='once'?'selected':''}>🔒 One attempt only</option></select></td><td><button type="button" class="secondary" data-id="${esc(t.id)}" data-title="${esc(t.title)}" onclick="deleteTest(this.dataset.id, this.dataset.title)">🗑 Delete</button></td></tr>`).join('')}
+      ${tests.map(t=>`<tr><td>${esc(t.title)}</td><td>${esc(t.category||'')}</td><td>${esc(t.exam)}</td><td>${(t.subjects||[]).map(esc).join(', ')}</td><td>${t.type}</td><td>${t.questionCount}</td><td>${t.duration} min</td><td><select onchange="changeAttemptPolicy('${esc(t.id)}', this.value, loadMyTests)"><option value="reattempt" ${t.attemptPolicy!=='once'?'selected':''}>🔁 Reattempt allowed</option><option value="once" ${t.attemptPolicy==='once'?'selected':''}>🔒 One attempt only</option></select></td><td><div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="secondary" data-id="${esc(t.id)}" onclick="editTest(this.dataset.id)">✏️ Edit</button><button type="button" class="secondary" data-id="${esc(t.id)}" data-title="${esc(t.title)}" onclick="deleteTest(this.dataset.id, this.dataset.title)">🗑 Delete</button></div></td></tr>`).join('')}`
     </tbody></table></div>` : '<p class="muted">You have not published any test series yet.</p>';
   }catch(e){ box.innerHTML = `<p class="muted">${esc(e.message)}</p>`; }
 }
