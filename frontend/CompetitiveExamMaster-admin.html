@@ -166,6 +166,12 @@ main{max-width:1240px;margin:auto;padding:30px 28px 44px}.section>h2{font-size:3
       <div class="form-row" style="flex:1"><label>Duration (minutes)</label><input id="admTestDuration" type="number" min="1" max="1440" value="30"></div>
       <div class="form-row" style="flex:1"><label>Attempts</label><select id="admTestAttempts"><option value="reattempt">🔁 Reattempt allowed</option><option value="once">🔒 One attempt only</option></select></div>
     </div>
+    <div class="panel-card" style="margin:14px 0;padding:14px;background:#f8fafc;border:1px solid #dbe3ef;box-shadow:none">
+      <h4 style="margin:0 0 6px">Exam Sections</h4>
+      <p class="muted" style="margin:0 0 12px">Create sections such as Mathematics or Current Affairs. Set an expected question count to validate that section before publishing. Assign every question to a section below.</p>
+      <div id="admTestSections"></div>
+      <button type="button" class="secondary" onclick="addAdminSection()">➕ Add Section</button>
+    </div>
     <div id="admTestQuestions"></div>
     <button type="button" class="secondary" onclick="addAdminQuestion()">➕ Add Question</button>
     <div class="row" style="margin-top:12px"><button class="primary-btn" type="button" onclick="submitAdminTest()">Publish Test Series</button><span id="admTestMsg"></span></div>
@@ -635,7 +641,49 @@ window.resumePremium = async function(id){
 
 /* ---------- admin: test creation ---------- */
 let adminQuestionCount=0;
+let adminSections=[{name:'General',count:''}];
+function adminSectionOptions(selected){
+  const names=adminSections.map(x=>String(x.name||'').trim()).filter(Boolean);
+  const safeNames=names.length?names:['General'];
+  const chosen=safeNames.includes(selected)?selected:safeNames[0];
+  return safeNames.map(name=>'<option value="'+esc(name)+'"'+(name===chosen?' selected':'')+'>'+esc(name)+'</option>').join('');
+}
+function renderAdminQuestionSectionSelects(){
+  document.querySelectorAll('#admTestQuestions .adm-q-subject').forEach(sel=>{
+    const current=sel.value;
+    sel.innerHTML=adminSectionOptions(current);
+  });
+}
+function renderAdminSections(){
+  const box=document.getElementById('admTestSections');
+  if(!box)return;
+  box.innerHTML=adminSections.map((section,i)=>`
+    <div class="row" style="align-items:end;gap:10px;margin:8px 0" data-section-index="${i}">
+      <div class="form-row" style="flex:2;min-width:160px"><label>Section name</label><input value="${esc(section.name)}" maxlength="80" onchange="updateAdminSection(${i},'name',this.value)" placeholder="e.g. Mathematics"></div>
+      <div class="form-row" style="flex:1;min-width:110px"><label>Expected questions</label><input type="number" min="1" max="500" value="${esc(section.count)}" onchange="updateAdminSection(${i},'count',this.value)" placeholder="Optional"></div>
+      <button type="button" class="danger-btn" onclick="removeAdminSection(${i})" ${adminSections.length===1?'disabled':''}>Remove</button>
+    </div>`).join('');
+  renderAdminQuestionSectionSelects();
+}
+window.addAdminSection=function(){
+  adminSections.push({name:'Section '+(adminSections.length+1),count:''});
+  renderAdminSections();
+};
+window.updateAdminSection=function(index,field,value){
+  if(!adminSections[index])return;
+  adminSections[index][field]=field==='name'?String(value||'').trim():String(value||'').trim();
+  renderAdminSections();
+};
+window.removeAdminSection=function(index){
+  if(adminSections.length<=1)return;
+  const removed=String(adminSections[index]?.name||'').trim();
+  adminSections.splice(index,1);
+  const fallback=String(adminSections[0]?.name||'General').trim()||'General';
+  document.querySelectorAll('#admTestQuestions .adm-q-subject').forEach(sel=>{if(sel.value===removed)sel.value=fallback;});
+  renderAdminSections();
+};
 function loadAdminTestFormModules(){
+  renderAdminSections();
   const sel=document.getElementById('admTestCategory'); if(!sel)return;
   api('GET','/api/modules').then(r=>{
     const mods=r.modules||[];
@@ -652,10 +700,11 @@ function addAdminQuestion(){
     <div class="form-row"><label>Question</label><textarea class="adm-q-text" rows="2" maxlength="5000"></textarea></div>
     <div class="row"><div class="form-row" style="flex:1"><label>Option A</label><input class="adm-q-a"></div><div class="form-row" style="flex:1"><label>Option B</label><input class="adm-q-b"></div></div>
     <div class="row"><div class="form-row" style="flex:1"><label>Option C</label><input class="adm-q-c"></div><div class="form-row" style="flex:1"><label>Option D</label><input class="adm-q-d"></div></div>
-    <div class="row"><div class="form-row" style="flex:1"><label>Correct Option</label><select class="adm-q-answer"><option>A</option><option>B</option><option>C</option><option>D</option></select></div><div class="form-row" style="flex:1"><label>Section / Subject</label><input class="adm-q-subject" value="General"></div><div class="form-row" style="flex:1"><label>Marks</label><input class="adm-q-marks" type="number" step="any" value="1"></div><div class="form-row" style="flex:1"><label>Negative</label><input class="adm-q-negative" type="number" step="any" value="0"></div></div>
+    <div class="row"><div class="form-row" style="flex:1"><label>Correct Option</label><select class="adm-q-answer"><option>A</option><option>B</option><option>C</option><option>D</option></select></div><div class="form-row" style="flex:1"><label>Section</label><select class="adm-q-subject">${adminSectionOptions('General')}</select></div><div class="form-row" style="flex:1"><label>Marks</label><input class="adm-q-marks" type="number" step="any" value="1"></div><div class="form-row" style="flex:1"><label>Negative</label><input class="adm-q-negative" type="number" step="any" value="0"></div></div>
     <div class="form-row"><label>Explanation / Solution</label><textarea class="adm-q-explanation" rows="2" maxlength="5000"></textarea></div>
   `;
   box.appendChild(wrap);
+  renderAdminQuestionSectionSelects();
 }
 window.submitAdminTest=async function(){
   try{
@@ -666,15 +715,32 @@ window.submitAdminTest=async function(){
     const rows=[...document.querySelectorAll('#admTestQuestions > .panel-card')];
     const questions=rows.map(w=>({question:w.querySelector('.adm-q-text').value.trim(),options:['.adm-q-a','.adm-q-b','.adm-q-c','.adm-q-d'].map(s=>w.querySelector(s).value.trim()),answer:w.querySelector('.adm-q-answer').value,subject:w.querySelector('.adm-q-subject').value.trim()||'General',marks:w.querySelector('.adm-q-marks').value,negative:w.querySelector('.adm-q-negative').value,explanation:w.querySelector('.adm-q-explanation').value.trim()}));
     const subjects=[...new Set(questions.map(q=>q.subject).filter(Boolean))];
+    const normalizedSectionNames=adminSections.map(x=>String(x.name||'').trim());
+    if(normalizedSectionNames.some(x=>!x))throw new Error('Every section must have a name.');
+    if(new Set(normalizedSectionNames.map(x=>x.toLowerCase())).size!==normalizedSectionNames.length)throw new Error('Section names must be unique.');
+    const sectionQuestionCounts={};
+    adminSections.forEach(section=>{
+      const name=String(section.name||'').trim(), raw=String(section.count||'').trim();
+      if(!raw)return;
+      const count=Number(raw);
+      if(!Number.isInteger(count)||count<1||count>500)throw new Error('Expected question counts must be whole numbers from 1 to 500.');
+      sectionQuestionCounts[name]=count;
+    });
+    for(const [section,target] of Object.entries(sectionQuestionCounts)){
+      const actual=questions.filter(q=>q.subject===section).length;
+      if(actual!==target)throw new Error(section+': expected '+target+' questions but assigned '+actual+'.');
+    }
     if(!title)throw new Error('Enter a test series title.');
     if(!category)throw new Error('Choose an exam module.');
     if(!languages.length)throw new Error('Enter at least one exam language.');
     if(!questions.length)throw new Error('Add at least one question.');
-    const r=await api('POST','/api/tests',{title,category,exam,languages,subjects,type:document.getElementById('admTestType').value,duration:document.getElementById('admTestDuration').value,attemptPolicy:document.getElementById('admTestAttempts').value,questions});
+    const r=await api('POST','/api/tests',{title,category,exam,languages,subjects,sectionQuestionCounts,type:document.getElementById('admTestType').value,duration:document.getElementById('admTestDuration').value,attemptPolicy:document.getElementById('admTestAttempts').value,questions});
     msg('admTestMsg',r.message,true);
     document.getElementById('admTestTitle').value='';
     document.getElementById('admTestQuestions').innerHTML='';
     adminQuestionCount=0;
+    adminSections=[{name:'General',count:''}];
+    renderAdminSections();
     addAdminQuestion();
     await loadAdminTests();
     await refreshModuleViews();
