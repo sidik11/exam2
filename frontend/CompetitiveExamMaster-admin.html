@@ -671,7 +671,19 @@ window.addAdminSection=function(){
 };
 window.updateAdminSection=function(index,field,value){
   if(!adminSections[index])return;
-  adminSections[index][field]=field==='name'?String(value||'').trim():String(value||'').trim();
+  const next=String(value||'').trim();
+  if(field==='name'){
+    if(!next){renderAdminSections();return;}
+    const previous=String(adminSections[index].name||'').trim();
+    if(previous!==next){
+      document.querySelectorAll('#admTestQuestions .adm-q-subject').forEach(sel=>{
+        if(sel.value===previous)sel.value=next;
+      });
+    }
+    adminSections[index].name=next;
+  }else{
+    adminSections[index][field]=next;
+  }
   renderAdminSections();
 };
 window.removeAdminSection=function(index){
