@@ -13,6 +13,14 @@
       "destination": "/frontend/CompetitiveExamMaster-student.html"
     },
     {
+      "source": "/privacy-policy",
+      "destination": "/frontend/privacy-policy.html"
+    },
+    {
+      "source": "/terms-of-service",
+      "destination": "/frontend/terms-of-service.html"
+    },
+    {
       "source": "/admin",
       "destination": "/frontend/CompetitiveExamMaster-admin.html"
     }
