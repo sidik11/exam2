@@ -1722,6 +1722,9 @@ function currentSectionName(){
     ? questionSectionName(activeTest.questions[activeQi])
     : 'General';
 }
+function getGroupedQuestionIndices(){
+  return getSectionNames().flatMap(section=>getSectionQuestionIndices(section));
+}
 function renderSubjectPills(){
   const box = document.getElementById('subjectPills');
   if(!box || !activeTest || !Array.isArray(activeTest.questions))return;
@@ -1791,7 +1794,7 @@ window.selectAnswer = function(letter){
 };
 window.nextQuestion = function(){
   if(navClickBlocked() || !activeTest) return;
-  const indices = getSectionQuestionIndices();
+  const indices = getGroupedQuestionIndices();
   const position = indices.indexOf(activeQi);
   if(position < 0 || position >= indices.length-1) return;
   trackTimeSpent();
@@ -1801,7 +1804,7 @@ window.nextQuestion = function(){
 };
 window.prevQuestion = function(){
   if(!activeTest) return;
-  const indices = getSectionQuestionIndices();
+  const indices = getGroupedQuestionIndices();
   const position = indices.indexOf(activeQi);
   if(position > 0){ trackTimeSpent(); activeQi = indices[position-1]; loadQ(); }
 };
@@ -1821,7 +1824,7 @@ window.markForReviewAndNext = function(){
   if(navClickBlocked() || !activeTest) return;
   trackTimeSpent();
   activeMarked[activeQi] = true;
-  const indices = getSectionQuestionIndices();
+  const indices = getGroupedQuestionIndices();
   const position = indices.indexOf(activeQi);
   if(position >= 0 && position < indices.length-1) activeQi = indices[position+1];
   loadQ();
