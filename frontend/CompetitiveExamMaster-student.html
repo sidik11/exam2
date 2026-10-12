@@ -2023,6 +2023,7 @@ function renderSolutionViewer(){
     </div>
     <div class="tb-divider"></div>
     <p class="tb-question">${esc(q.question)}</p>
+    ${q.instructions ? `<div class="tb-instructions" style="margin-top:10px">${esc(q.instructions)}</div>` : ''}
     <div class="tb-options">${optionsHtml}</div>
     <div class="row" style="gap:16px;margin-top:12px;flex-wrap:wrap;font-size:14px">
       <span>Your Answer: <b>${q.givenAnswer||'—'}</b></span>
