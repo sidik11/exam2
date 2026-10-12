@@ -1694,25 +1694,59 @@ function startTbTimer(minutes){
   }, 1000);
 }
 
+function questionSectionName(q){
+  return String(q && q.subject || 'General').replace(/\\s+/g,' ').trim() || 'General';
+}
+function getSectionNames(){
+  if(!activeTest || !Array.isArray(activeTest.questions)) return [];
+  const questionNames = [...new Set(activeTest.questions.map(questionSectionName))];
+  const configured = Array.isArray(activeTest.subjects)
+    ? activeTest.subjects.map(s=>String(s||'').replace(/\\s+/g,' ').trim()).filter(Boolean)
+    : [];
+  // Use the configured order when it matches real questions, then append any
+  // section found on a question but missing from old test metadata.
+  const names = configured.filter(name=>questionNames.includes(name));
+  questionNames.forEach(name=>{if(!names.includes(name))names.push(name);});
+  return names.length ? names : ['General'];
+}
+function getSectionQuestionIndices(subject){
+  if(!activeTest || !Array.isArray(activeTest.questions)) return [];
+  const section = subject || questionSectionName(activeTest.questions[activeQi]);
+  return activeTest.questions
+    .map((q,index)=>({q,index}))
+    .filter(item=>questionSectionName(item.q)===section)
+    .map(item=>item.index);
+}
+function currentSectionName(){
+  return activeTest && activeTest.questions && activeTest.questions[activeQi]
+    ? questionSectionName(activeTest.questions[activeQi])
+    : 'General';
+}
 function renderSubjectPills(){
   const box = document.getElementById('subjectPills');
   if(!box || !activeTest || !Array.isArray(activeTest.questions))return;
-  const counts = {};
-  activeTest.questions.forEach(q=>{const name=String(q.subject||'General').trim()||'General';counts[name]=(counts[name]||0)+1;});
-  const subjects = [...new Set(activeTest.questions.map(q=>String(q.subject||'General').trim()||'General'))];
-  box.innerHTML = subjects.map(section => `<button type="button" class="tb-section-tab" data-s="${esc(section)}" onclick="jumpToSubject(this.dataset.s)">${esc(section)} <span style="opacity:.8">(${counts[section]||0})</span></button>`).join('');
+  const subjects = getSectionNames();
+  box.innerHTML = subjects.map(section => {
+    const count=getSectionQuestionIndices(section).length;
+    return `<button type="button" class="tb-section-tab" data-s="${esc(section)}" onclick="jumpToSubject(this.dataset.s)">${esc(section)} <span style="opacity:.8">(${count})</span></button>`;
+  }).join('');
   highlightActivePill();
 }
 function highlightActivePill(){
-  if(!activeTest || !activeTest.questions || !activeTest.questions[activeQi])return;
-  const current = String(activeTest.questions[activeQi].subject||'General').trim()||'General';
+  if(!activeTest || !Array.isArray(activeTest.questions) || !activeTest.questions[activeQi])return;
+  const current = currentSectionName();
   document.querySelectorAll('.tb-section-tab').forEach(p => p.classList.toggle('active', p.dataset.s===current));
   const nameEl = document.getElementById('tbSectionName');
   if(nameEl) nameEl.textContent = current;
 }
 window.jumpToSubject = function(subject){
-  const idx = activeTest.questions.findIndex(q => (String(q.subject||'General').trim()||'General') === subject);
-  if(idx >= 0){ trackTimeSpent(); activeQi = idx; loadQ(); }
+  if(!activeTest || !Array.isArray(activeTest.questions)) return;
+  const indices = getSectionQuestionIndices(subject);
+  if(indices.length){
+    trackTimeSpent();
+    activeQi = indices[0];
+    loadQ();
+  }
 };
 
 function localizedQuestion(q){
@@ -1733,7 +1767,9 @@ function loadQ(){
   activeVisited[activeQi] = true;
   const q = activeTest.questions[activeQi];
   const view = localizedQuestion(q);
-  document.getElementById('qTitle').textContent = 'Question No. '+(activeQi+1);
+  const sectionIndices = getSectionQuestionIndices(questionSectionName(q));
+  const sectionPosition = Math.max(0, sectionIndices.indexOf(activeQi));
+  document.getElementById('qTitle').textContent = 'Question '+(sectionPosition+1)+' of '+sectionIndices.length;
   document.getElementById('question').textContent = view.question;
   const instructions=document.getElementById('qInstructions');
   instructions.textContent=String(q.instructions||'').trim();
@@ -1754,14 +1790,20 @@ window.selectAnswer = function(letter){
   loadQ();
 };
 window.nextQuestion = function(){
-  if(navClickBlocked()) return;
+  if(navClickBlocked() || !activeTest) return;
+  const indices = getSectionQuestionIndices();
+  const position = indices.indexOf(activeQi);
+  if(position < 0 || position >= indices.length-1) return;
   trackTimeSpent();
   delete activeMarked[activeQi];
-  activeQi = (activeQi + 1) % activeTest.questions.length;
+  activeQi = indices[position+1];
   loadQ();
 };
 window.prevQuestion = function(){
-  if(activeQi > 0){ trackTimeSpent(); activeQi--; loadQ(); }
+  if(!activeTest) return;
+  const indices = getSectionQuestionIndices();
+  const position = indices.indexOf(activeQi);
+  if(position > 0){ trackTimeSpent(); activeQi = indices[position-1]; loadQ(); }
 };
 window.clearResponse = function(){
   delete activeAnswers[activeQi];
@@ -1776,10 +1818,12 @@ function navClickBlocked(){
   return false;
 }
 window.markForReviewAndNext = function(){
-  if(navClickBlocked()) return;
+  if(navClickBlocked() || !activeTest) return;
   trackTimeSpent();
   activeMarked[activeQi] = true;
-  activeQi = (activeQi + 1) % activeTest.questions.length;
+  const indices = getSectionQuestionIndices();
+  const position = indices.indexOf(activeQi);
+  if(position >= 0 && position < indices.length-1) activeQi = indices[position+1];
   loadQ();
 };
 
@@ -1796,13 +1840,15 @@ function questionStatus(i){
 }
 function renderPalette(){
   const grid = document.getElementById('paletteGrid');
-  if(!grid || !activeTest) return;
+  if(!grid || !activeTest || !Array.isArray(activeTest.questions)) return;
   const counts = { answered:0, marked:0, 'not-visited':0, 'answered-marked':0, 'not-answered':0 };
-  grid.innerHTML = activeTest.questions.map((q,i)=>{
-    const status = questionStatus(i);
+  const sectionIndices = getSectionQuestionIndices();
+  grid.innerHTML = sectionIndices.map((globalIndex,localIndex)=>{
+    const q = activeTest.questions[globalIndex];
+    const status = questionStatus(globalIndex);
     counts[status] = (counts[status]||0) + 1;
-    const cls = 'tb-qnum st-' + status + (i===activeQi ? ' current' : '');
-    return `<button class="${cls}" title="Question ${i+1}${q.subject && q.subject!=='General' ? ' ('+esc(q.subject)+')' : ''}" onclick="jumpToQuestionIndex(${i})">${i+1}</button>`;
+    const cls = 'tb-qnum st-' + status + (globalIndex===activeQi ? ' current' : '');
+    return `<button type="button" class="${cls}" title="Question ${localIndex+1} in ${esc(currentSectionName())}" onclick="jumpToQuestionIndex(${globalIndex})">${localIndex+1}</button>`;
   }).join('');
   const set = (id,v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
   set('cntAnswered', counts.answered);
