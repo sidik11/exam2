@@ -399,6 +399,20 @@ footer{padding:32px 16px;color:var(--muted)}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
+
+/* Focused exam and post-exam screens: never show unrelated test-series cards above the active view. */
+body.exam-active{overflow:hidden;background:#fff}
+body.exam-active header,body.exam-active main>section:not(#tests){display:none!important}
+body.exam-active #tests{display:block!important;position:fixed;inset:0;z-index:99999;overflow:auto;margin:0;padding:0;background:var(--bg,#fff)}
+body.exam-active #tests>:not(#quiz){display:none!important}
+body.exam-active #tests #quiz{display:block!important;min-height:100vh;margin:0;border-radius:0}
+body.post-exam-view header,body.post-exam-view main>section:not(#tests){display:none!important}
+body.post-exam-view #tests{display:block!important;max-width:1200px;margin:0 auto}
+body.post-exam-view #tests>.row,body.post-exam-view #tests>#testsGrid,body.post-exam-view #tests>#undertaking,body.post-exam-view #tests>#quiz{display:none!important}
+body.post-exam-view #result:not(.hidden),body.post-exam-view #solutionViewer:not(.hidden){display:block!important}
+#svSectionTabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+#svSectionTabs button{border:1px solid var(--border,#cbd5e1);border-radius:999px;padding:8px 12px;background:var(--card,#fff);color:var(--fg,#172033);cursor:pointer}
+#svSectionTabs button.active{background:var(--primary,#2563eb);border-color:var(--primary,#2563eb);color:#fff}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -761,6 +775,7 @@ let activeCategory = null;
 
 
 function showSection(id){
+  document.body.classList.remove('exam-active','post-exam-view');
   document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));
   const el=document.getElementById(id); if(el) el.classList.remove('hidden');
   if(id==='premium') loadPremium();
@@ -1642,6 +1657,8 @@ window.beginExam = async function(){
   activeTimeBySubject = {};
   questionEnterTime = Date.now();
   document.getElementById('undertaking').classList.add('hidden');
+  document.body.classList.remove('post-exam-view');
+  document.body.classList.add('exam-active');
   document.getElementById('quiz').classList.remove('hidden');
   document.getElementById('tbTestTitle').textContent = activeTest.title;
   const uname = (currentUser && (currentUser.name || currentUser.email)) || 'Student';
@@ -1921,6 +1938,7 @@ window.submitTest = async function(){
     await api('POST', '/api/tests/'+encodeURIComponent(activeTest.id)+'/submit', { attemptId: activeTest.attemptId, answers: activeAnswers, timeBySubject: activeTimeBySubject });
     lastResult=null;
     svIndex=0;
+    document.body.classList.remove('exam-active','post-exam-view');
     document.getElementById('quiz').classList.add('hidden');
     document.getElementById('solutionViewer').classList.add('hidden');
     document.getElementById('result').classList.add('hidden');
@@ -1928,6 +1946,8 @@ window.submitTest = async function(){
   }catch(e){ alert(e.message); }
 };
 window.showResultScreen = function(r){
+    document.body.classList.remove('exam-active');
+    document.body.classList.add('post-exam-view');
     lastResult = r;
     document.getElementById('quiz').classList.add('hidden');
     document.getElementById('fsWarning').classList.remove('show');
@@ -1937,7 +1957,7 @@ window.showResultScreen = function(r){
       <div class="result-header">
         <h3>${esc(r.title)}</h3>
         <div class="rh-actions">
-          <button class="rh-btn" onclick="loadTests();document.getElementById('result').classList.add('hidden')">Go to Tests</button>
+          <button class="rh-btn" onclick="showSection('tests');document.getElementById('result').classList.add('hidden');document.getElementById('solutionViewer').classList.add('hidden')">Go to Tests</button>
           <button class="rh-btn primary" onclick="openSolutionViewer(0)">Solutions</button>
         </div>
       </div>
@@ -1985,9 +2005,22 @@ window.showResultScreen = function(r){
 };
 
 
+function solutionSectionName(q){return String(q&&q.subject||'General').trim()||'General';}
+function getSolutionGroups(){
+  const groups=new Map();
+  (lastResult?.review||[]).forEach((q,i)=>{const name=solutionSectionName(q);if(!groups.has(name))groups.set(name,[]);groups.get(name).push(i);});
+  return groups;
+}
+function getSolutionOrder(){return [...getSolutionGroups().values()].flat();}
+function getSolutionSectionPosition(index){
+  const q=lastResult?.review?.[index];if(!q)return {section:'General',position:0,total:0};
+  const section=solutionSectionName(q),indices=getSolutionGroups().get(section)||[];
+  return {section,position:indices.indexOf(index)+1,total:indices.length};
+}
 window.openSolutionViewer = function(idx){
   if(!lastResult) return;
-  svIndex = idx || 0;
+  const order=getSolutionOrder();
+  svIndex = order[Math.max(0,Math.min(Number(idx)||0,order.length-1))] ?? 0;
   document.getElementById('result').classList.add('hidden');
   document.getElementById('solutionViewer').classList.remove('hidden');
   renderSolutionViewer();
@@ -1996,15 +2029,16 @@ window.closeSolutionViewer = function(){
   document.getElementById('solutionViewer').classList.add('hidden');
   document.getElementById('result').classList.remove('hidden');
 };
-window.svNext = function(){ if(lastResult && svIndex < lastResult.review.length-1){ svIndex++; renderSolutionViewer(); } };
-window.svPrev = function(){ if(svIndex > 0){ svIndex--; renderSolutionViewer(); } };
+window.svNext = function(){const order=getSolutionOrder(),position=order.indexOf(svIndex);if(position>=0&&position<order.length-1){svIndex=order[position+1];renderSolutionViewer();}};
+window.svPrev = function(){const order=getSolutionOrder(),position=order.indexOf(svIndex);if(position>0){svIndex=order[position-1];renderSolutionViewer();}};
 window.svJump = function(i){ svIndex = i; renderSolutionViewer(); };
 
 function renderSolutionViewer(){
   const r = lastResult;
   if(!r) return;
   const q = r.review[svIndex];
-  document.getElementById('svTestTitle').textContent = r.title + ' — Question ' + (svIndex+1) + ' of ' + r.review.length;
+  const sectionPosition=getSolutionSectionPosition(svIndex);
+  document.getElementById('svTestTitle').textContent = r.title + ' — ' + sectionPosition.section + ' ' + sectionPosition.position + ' of ' + sectionPosition.total;
   const letters = ['A','B','C','D'];
   const optionsHtml = q.options.map((opt,k)=>{
     const letter = letters[k];
@@ -2018,7 +2052,7 @@ function renderSolutionViewer(){
   const statusClass = q.outcome==='correct' ? 'status-approved' : (q.outcome==='incorrect' ? 'status-rejected' : 'status-pending');
   document.getElementById('svMain').innerHTML = `
     <div class="tb-meta-row">
-      <span class="tb-qno">Question No. ${svIndex+1}</span>
+      <span class="tb-qno">${esc(sectionPosition.section)} — Question ${sectionPosition.position} of ${sectionPosition.total}</span>
       <span class="${statusClass}">${statusLabel}</span>
     </div>
     <div class="tb-divider"></div>
@@ -2040,6 +2074,7 @@ function renderSolutionViewer(){
       </div>
     </div>
   `;
+  const solutionGroups=getSolutionGroups();
   document.getElementById('svSidebar').innerHTML = `
     <div class="tb-legend">
       <span class="tb-legend-item"><span class="tb-legend-badge tb-badge-answered">${r.correct}</span>Correct</span>
@@ -2047,13 +2082,15 @@ function renderSolutionViewer(){
       <span class="tb-legend-item"><span class="tb-legend-badge" style="background:#94a3b8">${r.unattempted}</span>Unattempted</span>
     </div>
     <div class="tb-section-label">Solutions by Section</div>
-    ${Object.entries(r.review.reduce((groups,qq,i)=>{const name=String(qq.subject||'General').trim()||'General';(groups[name] ||= []).push({qq,i});return groups;},{})).map(([section,items])=>`
-      <div class="tb-section-label" style="margin-top:12px;font-size:12px">${esc(section)} <span style="opacity:.7">(${items.length})</span></div>
+    ${[...solutionGroups.entries()].map(([section,indices])=>`
+      <div class="tb-section-label" style="margin-top:12px;font-size:12px">${esc(section)} <span style="opacity:.7">(${indices.length})</span></div>
       <div class="tb-qgrid">
-        ${items.map(({qq,i})=>{
+        ${indices.map((i,localIndex)=>{
+          const qq=r.review[i];
           const st = qq.outcome==='correct' ? 'st-answered' : (qq.outcome==='incorrect' ? 'st-not-answered' : '');
           const cur = i===svIndex ? 'current' : '';
-          return `<button class="tb-qnum ${st} ${cur}" title="${esc(section)} — Question ${i+1}" onclick="svJump(${i})">${i+1}</button>`;
+          const number=localIndex+1;
+          return `<button class="tb-qnum ${st} ${cur}" title="${esc(section)} — Question ${number}" onclick="svJump(${i})">${number}</button>`;
         }).join('')}
       </div>`).join('')}
   `;
