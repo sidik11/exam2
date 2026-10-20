@@ -125,7 +125,7 @@ table.sec-table td.sec-name{font-weight:700}
 .tb-section-tab{border:0;background:transparent;color:#334155;padding:9px 14px;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap;cursor:pointer}
 .tb-section-tab.active{background:#0f1b3d;color:#fff}
 .tb-body{display:flex;gap:0;align-items:flex-start;flex-wrap:wrap}
-.tb-main{flex:2;min-width:280px;padding:18px 20px}
+.tb-main{flex:2;min-width:280px;padding:18px 20px;display:flex;flex-direction:column;min-height:460px;min-width:0}
 .tb-meta-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .tb-qno{font-weight:700;font-size:15px}
 .tb-meta-right{display:flex;align-items:center;gap:14px;font-size:13px;color:#334155;flex-wrap:wrap}
@@ -146,7 +146,7 @@ table.sec-table td.sec-name{font-weight:700}
 .tb-radio i{width:10px;height:10px;border-radius:50%;background:#2563eb;display:none}
 .tb-option-row.selected .tb-radio i{display:block}
 .tb-option-text{font-size:15px;color:#1f2937}
-.tb-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:22px;padding-top:16px;border-top:1px solid #e5e7eb}
+.tb-actions{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:22px -20px -18px;padding:12px 20px max(12px,env(safe-area-inset-bottom));border-top:1px solid #e5e7eb;background:var(--card,#fff);box-shadow:0 -5px 14px #0f172a0a}
 .tb-actions-left,.tb-actions-right{display:flex;gap:10px;flex-wrap:wrap}
 button.tb-btn-light{background:#d1d5db!important;color:#1f2937!important;border:0;padding:10px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer}
 button.tb-btn-teal{background:#14b8a6;color:#fff;border:0;padding:10px 20px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer}
@@ -523,7 +523,7 @@ body.post-exam-view #result:not(.hidden),body.post-exam-view #solutionViewer:not
         <div class="tb-meta-row">
           <span class="tb-qno" id="qTitle">Question No. 1</span>
           <div class="tb-meta-right">
-            <span class="tb-marks">Marks <span class="tb-mark-pill tb-mark-pos">+1</span><span class="tb-mark-pill tb-mark-neg">-0.25</span></span>
+            <span class="tb-marks" aria-label="Marks for this question">Marks <span id="qPositiveMarks" class="tb-mark-pill tb-mark-pos">+1</span><span id="qNegativeMarks" class="tb-mark-pill tb-mark-neg">-0.25</span></span>
           </div>
         </div>
         <div class="tb-divider" id="qProgressBar"></div>
@@ -1790,6 +1790,12 @@ function loadQ(){
   const sectionIndices = getSectionQuestionIndices(questionSectionName(q));
   const sectionPosition = Math.max(0, sectionIndices.indexOf(activeQi));
   document.getElementById('qTitle').textContent = 'Question '+(sectionPosition+1)+' of '+sectionIndices.length;
+  const positiveMarks = Number.isFinite(Number(q.marks)) ? Number(q.marks) : 1;
+  const negativeMarks = Number.isFinite(Number(q.negative)) ? Math.max(0, Number(q.negative)) : 0;
+  const positiveMarksEl = document.getElementById('qPositiveMarks');
+  const negativeMarksEl = document.getElementById('qNegativeMarks');
+  if (positiveMarksEl) positiveMarksEl.textContent = '+' + String(Number(positiveMarks.toFixed(2)));
+  if (negativeMarksEl) negativeMarksEl.textContent = '-' + String(Number(negativeMarks.toFixed(2)));
   document.getElementById('question').textContent = view.question;
   const instructions=document.getElementById('qInstructions');
   instructions.textContent=String(q.instructions||'').trim();
