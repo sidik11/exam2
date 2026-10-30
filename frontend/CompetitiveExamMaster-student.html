@@ -587,8 +587,9 @@ body.post-exam-view #result:not(.hidden),body.post-exam-view #solutionViewer:not
     <div id="authPaneLogin">
       <div class="form-row"><label>Email</label><input id="loginEmail" type="email" placeholder="you@example.com" autocomplete="username"></div>
       <div class="form-row"><label>Password</label><input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password"></div>
-      <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:14px"><input type="checkbox" id="rememberLogin" style="width:18px;height:18px"> Remember this email on this device</label>
-      <button id="loginSubmit" class="primary-btn" style="width:100%" onclick="loginUser()">Sign in</button>
+      <label style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-size:14px"><input type="checkbox" id="rememberLogin" style="width:18px;height:18px"> Remember this email on this device</label>
+      <label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 14px;font-size:14px;line-height:1.5"><input type="checkbox" id="loginTermsAccepted" style="width:18px;height:18px;flex:0 0 18px;margin-top:1px"> I accept the <a href="/terms-of-service" target="_blank" rel="noopener">Terms and Conditions</a>.</label>
+      <button id="loginSubmit" disabled class="primary-btn" style="width:100%" onclick="loginUser()">Sign in</button>
       <p id="loginMsg"></p>
       <p><a href="javascript:void(0)" onclick="toggleForgot()">Forgot password?</a></p>
 
@@ -615,7 +616,8 @@ body.post-exam-view #result:not(.hidden),body.post-exam-view #solutionViewer:not
         <div class="form-row"><label>Email</label><input id="studentEmail" type="email" placeholder="Email"></div>
         <div class="form-row"><label>Password</label><input id="studentPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8"></div>
         <div class="form-row"><label>Confirm Password</label><input id="studentConfirmPassword" type="password" placeholder="Re-enter password" autocomplete="new-password" minlength="8"></div>
-        <button class="primary-btn" style="width:100%" onclick="registerStudent()">Register as Student</button>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin:4px 0 14px;font-size:14px;line-height:1.5"><input type="checkbox" id="studentTermsAccepted" style="width:18px;height:18px;flex:0 0 18px;margin-top:1px"> I accept the <a href="/terms-of-service" target="_blank" rel="noopener">Terms and Conditions</a>.</label>
+        <button id="studentRegisterSubmit" class="primary-btn" style="width:100%" disabled onclick="registerStudent()">Register as Student</button>
         <p id="studentMsg"></p>
       </div>
 
@@ -627,7 +629,8 @@ body.post-exam-view #result:not(.hidden),body.post-exam-view #solutionViewer:not
         <div class="form-row"><label>Subject / Expertise</label><input id="teacherSubject" placeholder="e.g. Mathematics"></div>
         <div class="form-row"><label>Password</label><input id="teacherPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password" minlength="8"></div>
         <div class="form-row"><label>Confirm Password</label><input id="teacherConfirmPassword" type="password" placeholder="Re-enter password" autocomplete="new-password" minlength="8"></div>
-        <button class="primary-btn" style="width:100%" onclick="registerTeacher()">Register as Teacher</button>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin:4px 0 14px;font-size:14px;line-height:1.5"><input type="checkbox" id="teacherTermsAccepted" style="width:18px;height:18px;flex:0 0 18px;margin-top:1px"> I accept the <a href="/terms-of-service" target="_blank" rel="noopener">Terms and Conditions</a>.</label>
+        <button id="teacherRegisterSubmit" class="primary-btn" style="width:100%" disabled onclick="registerTeacher()">Register as Teacher</button>
         <p id="teacherMsg"></p>
       </div>
 
@@ -895,6 +898,7 @@ async function refreshUser(){
 }
 
 window.registerStudent = async function(){
+  if(!document.getElementById('studentTermsAccepted')?.checked){ msg('studentMsg','Please accept the Terms and Conditions before creating your account.'); return; }
   const btn=document.querySelector('#regPaneStudent button[onclick="registerStudent()"]');
   const password=document.getElementById('studentPassword').value;
   const confirmPassword=document.getElementById('studentConfirmPassword').value;
@@ -918,6 +922,7 @@ window.registerStudent = async function(){
 };
 
 window.registerTeacher = async function(){
+  if(!document.getElementById('teacherTermsAccepted')?.checked){ msg('teacherMsg','Please accept the Terms and Conditions before creating your account.'); return; }
   const btn=document.querySelector('#regPaneTeacher button[onclick="registerTeacher()"]');
   const password=document.getElementById('teacherPassword').value;
   const confirmPassword=document.getElementById('teacherConfirmPassword').value;
@@ -941,6 +946,7 @@ window.registerTeacher = async function(){
 };
 
 window.loginUser = async function(){
+  if(!document.getElementById('loginTermsAccepted')?.checked){ msg('loginMsg','Please accept the Terms and Conditions before signing in.'); return; }
   const btn=document.getElementById('loginSubmit');
   if(btn){btn.classList.add('loading');btn.disabled=true;btn.textContent='Signing in…';}
   try{
@@ -980,6 +986,24 @@ window.loginUser = async function(){
     }));
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+
+
+// Require explicit acceptance of the Terms and Conditions for every auth action.
+(function initTermsAcceptance(){
+  const pairs=[
+    ['loginTermsAccepted','loginSubmit'],
+    ['studentTermsAccepted','studentRegisterSubmit'],
+    ['teacherTermsAccepted','teacherRegisterSubmit']
+  ];
+  pairs.forEach(([checkboxId,buttonId])=>{
+    const checkbox=document.getElementById(checkboxId);
+    const button=document.getElementById(buttonId);
+    if(!checkbox||!button)return;
+    const sync=()=>{button.disabled=!checkbox.checked;};
+    checkbox.addEventListener('change',sync);
+    sync();
+  });
 })();
 
 window.logout=async function(){try{await api('POST','/api/auth/logout');}catch(_){}currentUser=null;updateUI();showSection('auth');showAuthTab('login');};
